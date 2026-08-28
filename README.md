@@ -106,9 +106,30 @@ real database.
    php -S localhost:8000 -t public
    ```
 
-   For real hosting, point your web server's document root at the
-   `public/` directory (`config/`, `src/`, `.env` should stay outside the
-   web root or otherwise be blocked from direct access).
+   For real hosting, you have two options — pick based on what your host
+   lets you do:
+
+   - **Point the document root at `public/` (preferred, if your host lets
+     you).** Most cPanel-style hosts let you set an addon domain or
+     subdomain's document root to any folder — set it to this app's
+     `public/` folder. `config/`, `src/`, `templates/`, `.env` then sit
+     completely outside anything the web server will ever serve, which is
+     the most secure setup.
+
+   - **Extract the whole zip directly into the domain/subdomain's root
+     folder** (e.g. if your host only gives you a fixed `public_html` and
+     no way to change it). The included root `.htaccess` transparently
+     routes every request through `public/`, so the app still works from
+     the domain's normal URL with no extra configuration. `config/`,
+     `src/`, `templates/`, `demo/`, and `.env` are additionally protected
+     by their own `.htaccess` files (`Require all denied`) as defense in
+     depth, in case `.htaccess` rewriting isn't available for some reason.
+
+   Both options require Apache (or another server that honors
+   `.htaccess`/`mod_rewrite`) with `AllowOverride All` for the directory —
+   the default on essentially all shared hosting. If you're on nginx
+   instead, the equivalent is pointing `root` at `public/` in your server
+   block; nginx doesn't read `.htaccess` at all.
 
 ## How filtering works
 

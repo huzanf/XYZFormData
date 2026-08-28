@@ -1,0 +1,18 @@
+# If this whole folder is your domain/subdomain's document root (rather
+# than pointing the doc root at the public/ subfolder — the more secure
+# option when your host allows it, see README), this makes the app work
+# by transparently routing every request through public/.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Defense in depth: block direct access to .env even if mod_rewrite is
+# unavailable or misconfigured — this file holds your DB credentials and
+# portal password hash.
+<Files ".env">
+    Require all denied
+</Files>
+<FilesMatch "\.env\.">
+    Require all denied
+</FilesMatch>
