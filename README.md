@@ -7,6 +7,18 @@ views (e.g. by group name, by event, by category).
 
 It only ever runs `SELECT` queries — it does not write to the database.
 
+## Try it with sample data (no WordPress DB needed)
+
+```bash
+php -S localhost:8000 -t demo/public
+```
+
+Then open http://localhost:8000. This runs the real app code against a
+seeded local SQLite database (`demo/demo.sqlite`, built automatically on
+first run) with realistic sample data for an event registration form and a
+main accounting form — useful for previewing the views before wiring up
+your real database. See `demo/forms.php` for how its views are configured.
+
 ## Requirements
 
 - PHP 8.0+ with the `pdo_mysql` extension.
