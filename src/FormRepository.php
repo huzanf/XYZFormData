@@ -10,7 +10,7 @@ final class FormRepository
 
     public function getForm(int $formId): ?array
     {
-        $stmt = $this->pdo->prepare("SELECT id, title FROM {$this->tables['form']} WHERE id = ?");
+        $stmt = $this->pdo->prepare("SELECT id, title, date_created FROM {$this->tables['form']} WHERE id = ?");
         $stmt->execute([$formId]);
         $form = $stmt->fetch();
 

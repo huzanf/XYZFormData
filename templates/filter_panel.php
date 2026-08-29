@@ -1,5 +1,21 @@
 <form method="get" action="view.php" class="filter-panel">
     <input type="hidden" name="form" value="<?= (int) $formId ?>">
+    <?php if ($qvSlug !== null): ?>
+    <input type="hidden" name="qv" value="<?= htmlspecialchars($qvSlug) ?>">
+    <?php endif; ?>
+
+    <details class="column-picker" <?= !empty($_GET['cols']) ? 'open' : '' ?>>
+        <summary>Columns (<?= count($fields) ?> of <?= count($allFields) ?> shown)</summary>
+        <div class="column-options">
+        <?php foreach ($allFields as $field): ?>
+            <label class="checkbox-option">
+                <input type="checkbox" name="cols[]" value="<?= (int) $field['id'] ?>"
+                    <?= in_array($field['id'], array_column($fields, 'id'), true) ? 'checked' : '' ?>>
+                <?= htmlspecialchars($field['label']) ?>
+            </label>
+        <?php endforeach; ?>
+        </div>
+    </details>
 
     <div class="filter-row">
         <label>Date from
@@ -53,8 +69,8 @@
     <?php endforeach; ?>
 
     <div class="filter-actions">
-        <button type="submit">Apply Filters</button>
-        <a class="reset-link" href="view.php?form=<?= (int) $formId ?>">Reset</a>
+        <button type="submit">Apply</button>
+        <a class="reset-link" href="view.php?<?= htmlspecialchars(http_build_query(array_filter(['form' => $formId, 'qv' => $qvSlug]))) ?>">Reset</a>
         <button type="submit" formaction="export.php">Export to Excel</button>
     </div>
 </form>

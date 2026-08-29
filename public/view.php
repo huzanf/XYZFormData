@@ -9,6 +9,7 @@ require_once __DIR__ . '/../src/SchemaDetector.php';
 require_once __DIR__ . '/../src/FormRepository.php';
 require_once __DIR__ . '/../src/EntryRepository.php';
 require_once __DIR__ . '/../src/FilterRequest.php';
+require_once __DIR__ . '/../src/ColumnSelection.php';
 
 $config = require __DIR__ . '/../config/config.php';
 $formsConfig = require __DIR__ . '/../config/forms.php';
@@ -28,6 +29,7 @@ if (!isset($formsConfig[$formId])) {
 }
 
 $formDef = $formsConfig[$formId];
+$quickViews = $formDef['quick_views'] ?? [];
 
 try {
     $pdo = Database::connect($config['db']);
@@ -43,49 +45,108 @@ try {
 $formRepo = new FormRepository($pdo, $tables);
 $entryRepo = new EntryRepository($pdo, $tables);
 
-$fields = $formRepo->getFields($formId);
-$filters = FilterRequest::parse($fields, $_GET);
+$allFields = $formRepo->getFields($formId);
 
-$result = $entryRepo->search($formId, $filters, $perPage, ($page - 1) * $perPage);
-$total = $result['total'];
-$entries = $result['entries'];
-$entryIds = array_column($entries, 'id');
-$values = $entryRepo->getValuesForEntries($entryIds);
-
-// Build the filter panel's UI data: for choice/multi fields, options come
-// from values actually present in the data (so they always match what's
-// filterable); current selections are read back from the query string so
-// the panel reflects the filters currently applied.
-$filterableFields = [];
-$rawFilterInput = is_array($_GET['f'] ?? null) ? $_GET['f'] : [];
-foreach ($fields as $field) {
-    $ui = $field;
-    $current = $rawFilterInput[$field['id']] ?? null;
-
-    switch ($field['filter_type']) {
-        case 'choice':
-        case 'multi':
-            $ui['distinct'] = $entryRepo->getDistinctValues($formId, $field['id']);
-            $ui['selected'] = $field['filter_type'] === 'multi'
-                ? (is_array($current) ? array_map('strval', $current) : [])
-                : (is_scalar($current) ? (string) $current : '');
-            break;
-        case 'range':
-            $ui['selected_min'] = is_array($current) ? (string) ($current['min'] ?? '') : '';
-            $ui['selected_max'] = is_array($current) ? (string) ($current['max'] ?? '') : '';
-            break;
-        default:
-            $ui['selected'] = is_scalar($current) ? (string) $current : '';
+// Resolve the active quick view (if any) from ?qv=. An unrecognized slug
+// is treated the same as no quick view (falls back to Full Data).
+$qvSlug = isset($_GET['qv']) ? (string) $_GET['qv'] : null;
+$activeQuickView = null;
+foreach ($quickViews as $qv) {
+    if ($qv['slug'] === $qvSlug) {
+        $activeQuickView = $qv;
+        break;
     }
-
-    $filterableFields[] = $ui;
 }
+if ($activeQuickView === null) {
+    $qvSlug = null;
+}
+
+$groupField = null;
+if ($activeQuickView !== null) {
+    foreach ($allFields as $f) {
+        if ($f['id'] === $activeQuickView['field_id']) {
+            $groupField = $f;
+            break;
+        }
+    }
+}
+
+$rawFilterInput = is_array($_GET['f'] ?? null) ? $_GET['f'] : [];
 
 $title = $formDef['label'];
 
 ob_start();
-include __DIR__ . '/../templates/filter_panel.php';
-include __DIR__ . '/../templates/entries_table.php';
+include __DIR__ . '/../templates/tabs.php';
+
+if ($groupField !== null && !filterHasValue($groupField, $rawFilterInput)) {
+    // Quick view chosen but no specific value picked yet: show the
+    // browsable index of that field's distinct values.
+    $groups = $entryRepo->getDistinctValues($formId, $groupField['id']);
+    include __DIR__ . '/../templates/quick_view_index.php';
+} else {
+    // Full Data, or a quick view with a value already selected (e.g.
+    // arrived via a quick-view-index link, or a bookmarked URL).
+    $fields = ColumnSelection::resolve($allFields, $_GET);
+    $filters = FilterRequest::parse($allFields, $_GET);
+
+    $result = $entryRepo->search($formId, $filters, $perPage, ($page - 1) * $perPage);
+    $total = $result['total'];
+    $entries = $result['entries'];
+    $entryIds = array_column($entries, 'id');
+    $values = $entryRepo->getValuesForEntries($entryIds);
+
+    // Build the filter panel's UI data: for choice/multi fields, options
+    // come from values actually present in the data (so they always match
+    // what's filterable); current selections are read back from the query
+    // string so the panel reflects the filters currently applied.
+    $filterableFields = [];
+    foreach ($allFields as $field) {
+        $ui = $field;
+        $current = $rawFilterInput[$field['id']] ?? null;
+
+        switch ($field['filter_type']) {
+            case 'choice':
+            case 'multi':
+                $ui['distinct'] = $entryRepo->getDistinctValues($formId, $field['id']);
+                $ui['selected'] = $field['filter_type'] === 'multi'
+                    ? (is_array($current) ? array_map('strval', $current) : [])
+                    : (is_scalar($current) ? (string) $current : '');
+                break;
+            case 'range':
+                $ui['selected_min'] = is_array($current) ? (string) ($current['min'] ?? '') : '';
+                $ui['selected_max'] = is_array($current) ? (string) ($current['max'] ?? '') : '';
+                break;
+            default:
+                $ui['selected'] = is_scalar($current) ? (string) $current : '';
+        }
+
+        $filterableFields[] = $ui;
+    }
+
+    include __DIR__ . '/../templates/filter_panel.php';
+    include __DIR__ . '/../templates/entries_table.php';
+}
+
 $content = ob_get_clean();
 
 include __DIR__ . '/../templates/layout.php';
+
+/**
+ * Whether a filter value has actually been set for this field in the
+ * request — used to decide whether a quick view shows its browsable
+ * index (no value yet) or drills straight into a filtered table.
+ */
+function filterHasValue(array $field, array $rawFilterInput): bool
+{
+    $current = $rawFilterInput[$field['id']] ?? null;
+
+    if ($field['filter_type'] === 'multi') {
+        return is_array($current) && count(array_filter($current, fn ($v) => $v !== '')) > 0;
+    }
+
+    if ($field['filter_type'] === 'range') {
+        return is_array($current) && (($current['min'] ?? '') !== '' || ($current['max'] ?? '') !== '');
+    }
+
+    return is_scalar($current) && trim((string) $current) !== '';
+}

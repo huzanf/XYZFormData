@@ -1,4 +1,9 @@
 <h1><?= htmlspecialchars($formDef['label']) ?></h1>
+<?php if ($activeQuickView !== null): ?>
+<p class="subtitle">
+    <a href="view.php?form=<?= (int) $formId ?>&qv=<?= urlencode($activeQuickView['slug']) ?>">&larr; Back to <?= htmlspecialchars($activeQuickView['label']) ?> list</a>
+</p>
+<?php endif; ?>
 <p class="meta"><?= (int) $total ?> entr<?= $total === 1 ? 'y' : 'ies' ?> matching current filters</p>
 
 <div class="table-wrap">

@@ -6,6 +6,7 @@ require_once __DIR__ . '/../../src/Auth.php';
 require_once __DIR__ . '/../../src/FormRepository.php';
 require_once __DIR__ . '/../../src/EntryRepository.php';
 require_once __DIR__ . '/../../src/FilterRequest.php';
+require_once __DIR__ . '/../../src/ColumnSelection.php';
 require_once __DIR__ . '/../../src/XlsxWriter.php';
 require __DIR__ . '/../bootstrap.php';
 
@@ -23,8 +24,9 @@ $formDef = $formsConfig[$formId];
 $formRepo = new FormRepository($pdo, $tables);
 $entryRepo = new EntryRepository($pdo, $tables);
 
-$fields = $formRepo->getFields($formId);
-$filters = FilterRequest::parse($fields, $_GET);
+$allFields = $formRepo->getFields($formId);
+$fields = ColumnSelection::resolve($allFields, $_GET);
+$filters = FilterRequest::parse($allFields, $_GET);
 
 $ids = $entryRepo->matchingEntryIds($formId, $filters);
 $ids = array_slice($ids, 0, $config['app']['max_export_rows']);

@@ -22,66 +22,73 @@ $pdo = new PDO('sqlite:' . $dbFile, null, null, [
     PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
 ]);
 
-$pdo->exec('CREATE TABLE gf_form (id INTEGER PRIMARY KEY, title TEXT)');
+$pdo->exec('CREATE TABLE gf_form (id INTEGER PRIMARY KEY, title TEXT, date_created TEXT)');
 $pdo->exec('CREATE TABLE gf_form_meta (form_id INTEGER, display_meta TEXT)');
 $pdo->exec('CREATE TABLE gf_entry (id INTEGER PRIMARY KEY, form_id INTEGER, status TEXT, date_created TEXT)');
 $pdo->exec('CREATE TABLE gf_entry_meta (entry_id INTEGER, form_id INTEGER, meta_key TEXT, meta_value TEXT)');
 
 // ---------------------------------------------------------------------
-// Form 1: Main Registration Form (accounting intake)
+// Form 1: Yearly Membership Form (created 2025 — older, so it should
+// sort BELOW the Event Registration Form on the "latest first" list)
 // ---------------------------------------------------------------------
 
-$pdo->prepare('INSERT INTO gf_form (id, title) VALUES (1, ?)')->execute(['Main Registration Form']);
+$pdo->prepare('INSERT INTO gf_form (id, title, date_created) VALUES (1, ?, ?)')
+    ->execute(['Yearly Membership Form', '2025-01-15 09:00:00']);
 
-$mainFormMeta = [
+$membershipFormMeta = [
     'fields' => [
-        ['id' => 1, 'label' => 'Client Name', 'type' => 'text', 'inputs' => []],
-        ['id' => 2, 'label' => 'Category', 'type' => 'select', 'inputs' => []],
+        ['id' => 1, 'label' => 'Member Name', 'type' => 'text', 'inputs' => []],
+        ['id' => 2, 'label' => 'Membership Type', 'type' => 'select', 'inputs' => []],
         ['id' => 3, 'label' => 'Amount', 'type' => 'number', 'inputs' => []],
         ['id' => 4, 'label' => 'Payment Method', 'type' => 'select', 'inputs' => []],
         ['id' => 5, 'label' => 'Invoice #', 'type' => 'text', 'inputs' => []],
+        ['id' => 6, 'label' => 'Group', 'type' => 'text', 'inputs' => []],
     ],
 ];
 $pdo->prepare('INSERT INTO gf_form_meta (form_id, display_meta) VALUES (1, ?)')
-    ->execute([json_encode($mainFormMeta)]);
+    ->execute([json_encode($membershipFormMeta)]);
 
-$categories = ['Membership Dues', 'Event Ticket Sales', 'Donations', 'Merchandise Sales'];
+$membershipTypes = ['Individual', 'Family', 'Student', 'Lifetime'];
 $methods = ['Credit Card', 'Check', 'Bank Transfer', 'Cash'];
-$clients = [
-    'Alvarez Consulting', 'Brightside Bakery', 'Chen & Partners', 'Downtown Business Assoc.',
-    'Evergreen Landscaping', 'Franklin Realty Group', 'Golden Gate Motors', 'Harper Legal Services',
-    'Ivy Lane Studio', 'Johnson Family Trust', 'Kline Architecture', 'Lakeside Marina',
-    'Miller & Sons Plumbing', 'Nova Tech Solutions', 'Oakwood Dental', 'Pearson Insurance',
-    'Quintero Freight', 'Riverside Cafe', 'Sterling & Co.', 'Union Hardware',
+$groups = ['Downtown Chapter', 'Uptown Chapter', 'Corporate Members', 'Youth Wing'];
+$members = [
+    'Maria Alvarez', 'James Brooks', 'Wei Chen', 'Priya Desai', 'Sam Evans',
+    'Laura Franklin', 'Tomas Garcia', 'Nadia Haddad', 'Kevin Ito', 'Olivia Johnson',
+    'David Kline', 'Emily Lawson', 'Marcus Nguyen', 'Sofia Pearson', 'Ben Quinn',
+    'Rachel Silva', 'Chen & Partners', 'Sterling & Co.', 'Union Hardware', 'Riverside Cafe',
 ];
 
-$mainEntryId = 1;
+$memberEntryId = 1;
 $entryStmt = $pdo->prepare('INSERT INTO gf_entry (id, form_id, status, date_created) VALUES (?, 1, ?, ?)');
 $metaStmt = $pdo->prepare('INSERT INTO gf_entry_meta (entry_id, form_id, meta_key, meta_value) VALUES (?, 1, ?, ?)');
 
-foreach ($clients as $i => $client) {
+foreach ($members as $i => $member) {
     $date = sprintf('2026-%02d-%02d %02d:%02d:00', rand(1, 8), rand(1, 28), rand(8, 17), rand(0, 59));
-    $entryStmt->execute([$mainEntryId, 'active', $date]);
+    $entryStmt->execute([$memberEntryId, 'active', $date]);
 
-    $category = $categories[$i % count($categories)];
-    $amount = number_format(rand(50, 5000) + rand(0, 99) / 100, 2, '.', '');
+    $type = $membershipTypes[$i % count($membershipTypes)];
+    $amount = number_format(rand(25, 500) + rand(0, 99) / 100, 2, '.', '');
     $method = $methods[array_rand($methods)];
     $invoice = 'INV-' . str_pad((string) (1000 + $i), 4, '0', STR_PAD_LEFT);
+    $group = $groups[$i % count($groups)];
 
-    $metaStmt->execute([$mainEntryId, '1', $client]);
-    $metaStmt->execute([$mainEntryId, '2', $category]);
-    $metaStmt->execute([$mainEntryId, '3', $amount]);
-    $metaStmt->execute([$mainEntryId, '4', $method]);
-    $metaStmt->execute([$mainEntryId, '5', $invoice]);
+    $metaStmt->execute([$memberEntryId, '1', $member]);
+    $metaStmt->execute([$memberEntryId, '2', $type]);
+    $metaStmt->execute([$memberEntryId, '3', $amount]);
+    $metaStmt->execute([$memberEntryId, '4', $method]);
+    $metaStmt->execute([$memberEntryId, '5', $invoice]);
+    $metaStmt->execute([$memberEntryId, '6', $group]);
 
-    $mainEntryId++;
+    $memberEntryId++;
 }
 
 // ---------------------------------------------------------------------
-// Form 2: Event Registration Form
+// Form 2: Event Registration Form (created 2026 — newer, so it should
+// sort ABOVE the Yearly Membership Form on the "latest first" list)
 // ---------------------------------------------------------------------
 
-$pdo->prepare('INSERT INTO gf_form (id, title) VALUES (2, ?)')->execute(['Event Registration Form']);
+$pdo->prepare('INSERT INTO gf_form (id, title, date_created) VALUES (2, ?, ?)')
+    ->execute(['Event Registration Form', '2026-06-01 09:00:00']);
 
 $eventFormMeta = [
     'fields' => [
@@ -105,7 +112,7 @@ $eventFormMeta = [
 $pdo->prepare('INSERT INTO gf_form_meta (form_id, display_meta) VALUES (2, ?)')
     ->execute([json_encode($eventFormMeta)]);
 
-$groups = ['Rotary Club', 'Smith Family', 'Chamber of Commerce', 'Downtown Business Assoc.', 'Lakeside Marina Staff'];
+$eventGroups = ['Rotary Club', 'Smith Family', 'Chamber of Commerce', 'Downtown Business Assoc.', 'Lakeside Marina Staff'];
 $attendees = [
     'Maria Alvarez', 'James Brooks', 'Wei Chen', 'Priya Desai', 'Sam Evans',
     'Laura Franklin', 'Tomas Garcia', 'Nadia Haddad', 'Kevin Ito', 'Olivia Johnson',
@@ -122,7 +129,7 @@ foreach ($attendees as $i => $name) {
     $date = sprintf('2026-%02d-%02d %02d:%02d:00', rand(1, 8), rand(1, 28), rand(8, 17), rand(0, 59));
     $entryStmt2->execute([$eventEntryId, 'active', $date]);
 
-    $group = $groups[$i % count($groups)];
+    $group = $eventGroups[$i % count($eventGroups)];
     $slug = strtolower(str_replace(' ', '.', $name));
     $email = $slug . '@example.com';
     $price = number_format(rand(35, 150), 2, '.', '');
@@ -132,7 +139,7 @@ foreach ($attendees as $i => $name) {
     $metaStmt2->execute([$eventEntryId, '3', $email]);
     $metaStmt2->execute([$eventEntryId, '5', $price]);
 
-    // Each attendee joins 1-3 events, so several show up under multiple event filters.
+    // Each attendee joins 1-3 events, so several show up under multiple event-type filters.
     $eventKeys = array_keys($eventInputs);
     shuffle($eventKeys);
     $joined = array_slice($eventKeys, 0, rand(1, 3));
