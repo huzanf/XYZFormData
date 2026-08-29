@@ -2,10 +2,10 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../src/Env.php';
-require_once __DIR__ . '/../src/Auth.php';
+require_once __DIR__ . '/src/Env.php';
+require_once __DIR__ . '/src/Auth.php';
 
-$config = require __DIR__ . '/../config/config.php';
+$config = require __DIR__ . '/config/config.php';
 
 $error = '';
 
@@ -24,7 +24,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 $title = 'Sign in';
 
 ob_start();
-include __DIR__ . '/../templates/login.php';
+include __DIR__ . '/templates/login.php';
 $content = ob_get_clean();
 
-include __DIR__ . '/../templates/layout.php';
+include __DIR__ . '/templates/layout.php';

@@ -2,22 +2,22 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../src/Env.php';
-require_once __DIR__ . '/../src/Auth.php';
-require_once __DIR__ . '/../src/Database.php';
-require_once __DIR__ . '/../src/SchemaDetector.php';
-require_once __DIR__ . '/../src/FormRepository.php';
-require_once __DIR__ . '/../src/EntryRepository.php';
-require_once __DIR__ . '/../src/FilterRequest.php';
-require_once __DIR__ . '/../src/ColumnSelection.php';
-require_once __DIR__ . '/../src/XlsxWriter.php';
-require_once __DIR__ . '/../src/ConfigStore.php';
+require_once __DIR__ . '/src/Env.php';
+require_once __DIR__ . '/src/Auth.php';
+require_once __DIR__ . '/src/Database.php';
+require_once __DIR__ . '/src/SchemaDetector.php';
+require_once __DIR__ . '/src/FormRepository.php';
+require_once __DIR__ . '/src/EntryRepository.php';
+require_once __DIR__ . '/src/FilterRequest.php';
+require_once __DIR__ . '/src/ColumnSelection.php';
+require_once __DIR__ . '/src/XlsxWriter.php';
+require_once __DIR__ . '/src/ConfigStore.php';
 
-$config = require __DIR__ . '/../config/config.php';
+$config = require __DIR__ . '/config/config.php';
 
 Auth::requireLogin($config);
 
-$store = new ConfigStore(__DIR__ . '/../data/views.json', __DIR__ . '/../config/forms.php');
+$store = new ConfigStore(__DIR__ . '/data/views.json', __DIR__ . '/config/forms.php');
 
 $formId = isset($_GET['form']) ? (int) $_GET['form'] : 0;
 $formDef = $store->form($formId);

@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../src/Env.php';
-require_once __DIR__ . '/../src/Auth.php';
-require_once __DIR__ . '/../src/Database.php';
-require_once __DIR__ . '/../src/SchemaDetector.php';
-require_once __DIR__ . '/../src/FormRepository.php';
-require_once __DIR__ . '/../src/ConfigStore.php';
+require_once __DIR__ . '/src/Env.php';
+require_once __DIR__ . '/src/Auth.php';
+require_once __DIR__ . '/src/Database.php';
+require_once __DIR__ . '/src/SchemaDetector.php';
+require_once __DIR__ . '/src/FormRepository.php';
+require_once __DIR__ . '/src/ConfigStore.php';
 
-$config = require __DIR__ . '/../config/config.php';
+$config = require __DIR__ . '/config/config.php';
 
 Auth::requireLogin($config);
 
-$store = new ConfigStore(__DIR__ . '/../data/views.json', __DIR__ . '/../config/forms.php');
+$store = new ConfigStore(__DIR__ . '/data/views.json', __DIR__ . '/config/forms.php');
 $formsConfig = $store->forms();
 
 try {
@@ -23,7 +23,7 @@ try {
     http_response_code(500);
     $title = 'Connection error';
     $content = '<h1>Could not load data</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
-    include __DIR__ . '/../templates/layout.php';
+    include __DIR__ . '/templates/layout.php';
     exit;
 }
 
@@ -42,7 +42,7 @@ uasort($formsConfig, fn ($a, $b) => strcmp((string) ($b['date_created'] ?? ''), 
 $title = $config['app']['title'];
 
 ob_start();
-include __DIR__ . '/../templates/forms_list.php';
+include __DIR__ . '/templates/forms_list.php';
 $content = ob_get_clean();
 
-include __DIR__ . '/../templates/layout.php';
+include __DIR__ . '/templates/layout.php';

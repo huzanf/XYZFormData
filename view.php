@@ -2,21 +2,21 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../src/Env.php';
-require_once __DIR__ . '/../src/Auth.php';
-require_once __DIR__ . '/../src/Database.php';
-require_once __DIR__ . '/../src/SchemaDetector.php';
-require_once __DIR__ . '/../src/FormRepository.php';
-require_once __DIR__ . '/../src/EntryRepository.php';
-require_once __DIR__ . '/../src/FilterRequest.php';
-require_once __DIR__ . '/../src/ColumnSelection.php';
-require_once __DIR__ . '/../src/ConfigStore.php';
+require_once __DIR__ . '/src/Env.php';
+require_once __DIR__ . '/src/Auth.php';
+require_once __DIR__ . '/src/Database.php';
+require_once __DIR__ . '/src/SchemaDetector.php';
+require_once __DIR__ . '/src/FormRepository.php';
+require_once __DIR__ . '/src/EntryRepository.php';
+require_once __DIR__ . '/src/FilterRequest.php';
+require_once __DIR__ . '/src/ColumnSelection.php';
+require_once __DIR__ . '/src/ConfigStore.php';
 
-$config = require __DIR__ . '/../config/config.php';
+$config = require __DIR__ . '/config/config.php';
 
 Auth::requireLogin($config);
 
-$store = new ConfigStore(__DIR__ . '/../data/views.json', __DIR__ . '/../config/forms.php');
+$store = new ConfigStore(__DIR__ . '/data/views.json', __DIR__ . '/config/forms.php');
 
 $formId = isset($_GET['form']) ? (int) $_GET['form'] : 0;
 $page = max(1, (int) ($_GET['page'] ?? 1));
@@ -28,7 +28,7 @@ if ($formDef === null) {
     http_response_code(404);
     $title = 'Not found';
     $content = '<h1>Not found</h1><p>Unknown form.</p><p><a href="index.php">&larr; Back to forms</a></p>';
-    include __DIR__ . '/../templates/layout.php';
+    include __DIR__ . '/templates/layout.php';
     exit;
 }
 
@@ -41,7 +41,7 @@ try {
     http_response_code(500);
     $title = 'Connection error';
     $content = '<h1>Could not load data</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
-    include __DIR__ . '/../templates/layout.php';
+    include __DIR__ . '/templates/layout.php';
     exit;
 }
 
@@ -79,13 +79,13 @@ $rawFilterInput = is_array($_GET['f'] ?? null) ? $_GET['f'] : [];
 $title = $formDef['label'];
 
 ob_start();
-include __DIR__ . '/../templates/tabs.php';
+include __DIR__ . '/templates/tabs.php';
 
 if ($groupField !== null && !filterHasValue($groupField, $rawFilterInput)) {
     // A grouped view chosen but no specific value picked yet: show the
     // browsable index of that field's distinct values.
     $groups = $entryRepo->getDistinctValues($formId, $groupField['id']);
-    include __DIR__ . '/../templates/quick_view_index.php';
+    include __DIR__ . '/templates/quick_view_index.php';
 } else {
     // Full Data, a view with no group-by (just a saved column layout), or
     // a grouped view with a value already selected.
@@ -130,13 +130,13 @@ if ($groupField !== null && !filterHasValue($groupField, $rawFilterInput)) {
         $filterableFields[] = $ui;
     }
 
-    include __DIR__ . '/../templates/filter_panel.php';
-    include __DIR__ . '/../templates/entries_table.php';
+    include __DIR__ . '/templates/filter_panel.php';
+    include __DIR__ . '/templates/entries_table.php';
 }
 
 $content = ob_get_clean();
 
-include __DIR__ . '/../templates/layout.php';
+include __DIR__ . '/templates/layout.php';
 
 /**
  * Whether a filter value has actually been set for this field in the

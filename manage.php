@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/../src/Env.php';
-require_once __DIR__ . '/../src/Auth.php';
-require_once __DIR__ . '/../src/Database.php';
-require_once __DIR__ . '/../src/SchemaDetector.php';
-require_once __DIR__ . '/../src/FormRepository.php';
-require_once __DIR__ . '/../src/ConfigStore.php';
+require_once __DIR__ . '/src/Env.php';
+require_once __DIR__ . '/src/Auth.php';
+require_once __DIR__ . '/src/Database.php';
+require_once __DIR__ . '/src/SchemaDetector.php';
+require_once __DIR__ . '/src/FormRepository.php';
+require_once __DIR__ . '/src/ConfigStore.php';
 
-$config = require __DIR__ . '/../config/config.php';
+$config = require __DIR__ . '/config/config.php';
 
 Auth::requireLogin($config);
 
-$store = new ConfigStore(__DIR__ . '/../data/views.json', __DIR__ . '/../config/forms.php');
+$store = new ConfigStore(__DIR__ . '/data/views.json', __DIR__ . '/config/forms.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
@@ -65,7 +65,7 @@ ob_start();
 if ($formId === null) {
     $forms = $store->forms();
     $title = 'Manage Forms';
-    include __DIR__ . '/../templates/manage_forms.php';
+    include __DIR__ . '/templates/manage_forms.php';
 } else {
     $formEntry = $store->form($formId);
 
@@ -88,9 +88,9 @@ if ($formId === null) {
 
         $views = $formEntry['views'] ?? [];
         $title = 'Manage Views — ' . $formEntry['label'];
-        include __DIR__ . '/../templates/manage_views.php';
+        include __DIR__ . '/templates/manage_views.php';
     }
 }
 
 $content = ob_get_clean();
-include __DIR__ . '/../templates/layout.php';
+include __DIR__ . '/templates/layout.php';

@@ -109,34 +109,26 @@ screen, and export before wiring up your real database.
    For local testing:
 
    ```bash
-   php -S localhost:8000 -t public
+   php -S localhost:8000 -t .
    ```
 
-   For real hosting, you have two options — pick based on what your host
-   lets you do:
+   For real hosting: **extract everything directly into the
+   domain/subdomain's document root** (e.g. `public_html/dashboard/` for a
+   subdomain) — `index.php`, `view.php`, etc. sit right at the top level
+   alongside `config/`, `src/`, `templates/`, `data/`, and `.env`. No
+   document-root change, no `.htaccess` rewrite trick, nothing else to
+   configure — visiting the domain just works.
 
-   - **Point the document root at `public/` (preferred, if your host lets
-     you).** Most cPanel-style hosts let you set an addon domain or
-     subdomain's document root to any folder — set it to this app's
-     `public/` folder. `config/`, `src/`, `templates/`, `data/`, `.env`
-     then sit completely outside anything the web server will ever serve,
-     which is the most secure setup.
-
-   - **Extract the whole zip directly into the domain/subdomain's root
-     folder** (e.g. if your host only gives you a fixed `public_html` and
-     no way to change it). The included root `.htaccess` transparently
-     routes every request through `public/`, so the app still works from
-     the domain's normal URL with no extra configuration. `config/`,
-     `src/`, `templates/`, `data/`, `demo/`, and `.env` are additionally
-     protected by their own `.htaccess` files (`Require all denied`) as
-     defense in depth, in case `.htaccess` rewriting isn't available for
-     some reason.
-
-   Both options require Apache (or another server that honors
-   `.htaccess`/`mod_rewrite`) with `AllowOverride All` for the directory —
-   the default on essentially all shared hosting. If you're on nginx
-   instead, the equivalent is pointing `root` at `public/` in your server
-   block; nginx doesn't read `.htaccess` at all.
+   `config/`, `src/`, `templates/`, `data/`, and `.env` are protected from
+   direct web access by their own `.htaccess` files (`Require all
+   denied`), so even though they're sitting right next to the public PHP
+   files, none of them — including your DB password in `.env` — can be
+   fetched directly by URL. This needs Apache (or another server that
+   honors `.htaccess`) with `AllowOverride All` (or at least `AuthConfig`)
+   for the directory, which is the default on essentially all shared
+   hosting. If you're on nginx instead, `.htaccess` isn't read at all —
+   you'd need equivalent `location` blocks denying those folders in your
+   server config.
 
 ## Managing forms and views
 
@@ -203,12 +195,14 @@ src/
   ConfigStore.php       # reads/writes data/views.json
   XlsxWriter.php        # dependency-free .xlsx writer (uses PHP's zip extension)
   Auth.php              # single shared portal password (session-based)
-public/
-  index.php    # lists all configured forms, latest first
-  view.php     # tabs + filter panel + results table for one form
-  export.php   # streams the current filtered set as .xlsx
-  manage.php   # admin screen: add/edit/remove forms and their views
-  login.php / logout.php
 templates/     # plain PHP view templates (all output is HTML-escaped)
-demo/          # seeded SQLite sample data + copies of public/ for local preview
+assets/        # style.css
+index.php      # lists all configured forms, latest first
+view.php       # tabs + filter panel + results table for one form
+export.php     # streams the current filtered set as .xlsx
+manage.php     # admin screen: add/edit/remove forms and their views
+login.php / logout.php
+demo/          # seeded SQLite sample data + a self-contained copy of the
+               # app (its own index.php/view.php/etc under demo/public/)
+               # for local preview via `php -S localhost:8000 -t demo/public`
 ```
