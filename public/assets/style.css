@@ -216,8 +216,9 @@ fieldset.checkbox-group legend {
     color: var(--muted);
     padding: 0 4px;
 }
-.checkbox-option {
+label.checkbox-option {
     display: flex;
+    flex-direction: row;
     align-items: center;
     gap: 6px;
     font-size: 0.85rem;
@@ -249,6 +250,90 @@ fieldset.checkbox-group legend {
     color: var(--accent);
 }
 .reset-link { font-size: 0.9rem; }
+
+/* Manage forms/views */
+
+form.inline { display: inline; }
+
+.link-button {
+    background: none;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--accent);
+    text-decoration: underline;
+    cursor: pointer;
+    font: inherit;
+}
+.link-button.danger { color: var(--danger); }
+
+.inline-form {
+    display: flex;
+    gap: 12px;
+    align-items: flex-end;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.inline-form label,
+.manage-view-form label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.85rem;
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.inline-form input,
+.manage-view-form input[type="text"],
+.manage-view-form select {
+    font: inherit;
+    padding: 6px 8px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+}
+
+.inline-form button {
+    font: inherit;
+    padding: 7px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--accent);
+    background: var(--accent);
+    color: #fff;
+    cursor: pointer;
+}
+
+.manage-view-form {
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+    max-width: 520px;
+    margin-top: 8px;
+}
+
+.manage-view-form .checkbox-group {
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    background: var(--bg-alt);
+}
+
+/* .manage-view-form label sets flex-direction:column for its own labeled
+   inputs; checkbox options inside it need the row layout back. */
+.manage-view-form .checkbox-option {
+    flex-direction: row;
+    align-items: center;
+}
+
+.manage-link {
+    font-size: 0.85rem;
+    color: var(--muted);
+    text-decoration: none;
+    align-self: center;
+    margin-left: auto;
+}
+.manage-link:hover { color: var(--accent); }
 
 /* Login */
 

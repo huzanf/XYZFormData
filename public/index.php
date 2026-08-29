@@ -7,11 +7,14 @@ require_once __DIR__ . '/../src/Auth.php';
 require_once __DIR__ . '/../src/Database.php';
 require_once __DIR__ . '/../src/SchemaDetector.php';
 require_once __DIR__ . '/../src/FormRepository.php';
+require_once __DIR__ . '/../src/ConfigStore.php';
 
 $config = require __DIR__ . '/../config/config.php';
-$formsConfig = require __DIR__ . '/../config/forms.php';
 
 Auth::requireLogin($config);
+
+$store = new ConfigStore(__DIR__ . '/../data/views.json', __DIR__ . '/../config/forms.php');
+$formsConfig = $store->forms();
 
 try {
     $pdo = Database::connect($config['db']);
@@ -27,13 +30,13 @@ try {
 $formRepo = new FormRepository($pdo, $tables);
 
 foreach ($formsConfig as $formId => &$formDef) {
-    $dbForm = $formRepo->getForm($formId);
+    $dbForm = $formRepo->getForm((int) $formId);
     $formDef['date_created'] = $dbForm['date_created'] ?? null;
 }
 unset($formDef);
 
 // Latest-created form first. Forms not found in the database (e.g. a
-// wrong ID in config/forms.php) sort to the bottom rather than the top.
+// wrong ID) sort to the bottom rather than the top.
 uasort($formsConfig, fn ($a, $b) => strcmp((string) ($b['date_created'] ?? ''), (string) ($a['date_created'] ?? '')));
 
 $title = $config['app']['title'];

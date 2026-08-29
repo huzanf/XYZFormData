@@ -5,14 +5,18 @@ declare(strict_types=1);
 require_once __DIR__ . '/../../src/Auth.php';
 require_once __DIR__ . '/../../src/FormRepository.php';
 require_once __DIR__ . '/../../src/EntryRepository.php';
+require_once __DIR__ . '/../../src/ConfigStore.php';
 require __DIR__ . '/../bootstrap.php';
 
 Auth::requireLogin($config);
 
+$store = new ConfigStore($viewsStorePath, $legacyFormsPath);
+$formsConfig = $store->forms();
+
 $formRepo = new FormRepository($pdo, $tables);
 
 foreach ($formsConfig as $formId => &$formDef) {
-    $dbForm = $formRepo->getForm($formId);
+    $dbForm = $formRepo->getForm((int) $formId);
     $formDef['date_created'] = $dbForm['date_created'] ?? null;
 }
 unset($formDef);

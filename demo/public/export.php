@@ -8,24 +8,40 @@ require_once __DIR__ . '/../../src/EntryRepository.php';
 require_once __DIR__ . '/../../src/FilterRequest.php';
 require_once __DIR__ . '/../../src/ColumnSelection.php';
 require_once __DIR__ . '/../../src/XlsxWriter.php';
+require_once __DIR__ . '/../../src/ConfigStore.php';
 require __DIR__ . '/../bootstrap.php';
 
 Auth::requireLogin($config);
 
-$formId = isset($_GET['form']) ? (int) $_GET['form'] : 0;
+$store = new ConfigStore($viewsStorePath, $legacyFormsPath);
 
-if (!isset($formsConfig[$formId])) {
+$formId = isset($_GET['form']) ? (int) $_GET['form'] : 0;
+$formDef = $store->form($formId);
+
+if ($formDef === null) {
     http_response_code(404);
     exit('Unknown form.');
 }
-
-$formDef = $formsConfig[$formId];
 
 $formRepo = new FormRepository($pdo, $tables);
 $entryRepo = new EntryRepository($pdo, $tables);
 
 $allFields = $formRepo->getFields($formId);
-$fields = ColumnSelection::resolve($allFields, $_GET);
+
+$qvSlug = isset($_GET['qv']) ? (string) $_GET['qv'] : null;
+$activeQuickView = null;
+foreach ($formDef['views'] ?? [] as $qv) {
+    if ($qv['slug'] === $qvSlug) {
+        $activeQuickView = $qv;
+        break;
+    }
+}
+
+$savedColumns = $activeQuickView['columns'] ?? null;
+$queryCols = $_GET['cols'] ?? null;
+$effectiveColumnIds = is_array($queryCols) ? array_map('intval', $queryCols) : $savedColumns;
+$fields = ColumnSelection::filterByIds($allFields, $effectiveColumnIds);
+
 $filters = FilterRequest::parse($allFields, $_GET);
 
 $ids = $entryRepo->matchingEntryIds($formId, $filters);

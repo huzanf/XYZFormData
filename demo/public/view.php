@@ -7,15 +7,20 @@ require_once __DIR__ . '/../../src/FormRepository.php';
 require_once __DIR__ . '/../../src/EntryRepository.php';
 require_once __DIR__ . '/../../src/FilterRequest.php';
 require_once __DIR__ . '/../../src/ColumnSelection.php';
+require_once __DIR__ . '/../../src/ConfigStore.php';
 require __DIR__ . '/../bootstrap.php';
 
 Auth::requireLogin($config);
+
+$store = new ConfigStore($viewsStorePath, $legacyFormsPath);
 
 $formId = isset($_GET['form']) ? (int) $_GET['form'] : 0;
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = $config['app']['per_page'];
 
-if (!isset($formsConfig[$formId])) {
+$formDef = $store->form($formId);
+
+if ($formDef === null) {
     http_response_code(404);
     $title = 'Not found';
     $content = '<h1>Not found</h1><p>Unknown form.</p><p><a href="index.php">&larr; Back to forms</a></p>';
@@ -23,8 +28,7 @@ if (!isset($formsConfig[$formId])) {
     exit;
 }
 
-$formDef = $formsConfig[$formId];
-$quickViews = $formDef['quick_views'] ?? [];
+$quickViews = $formDef['views'] ?? [];
 
 $formRepo = new FormRepository($pdo, $tables);
 $entryRepo = new EntryRepository($pdo, $tables);
@@ -44,9 +48,9 @@ if ($activeQuickView === null) {
 }
 
 $groupField = null;
-if ($activeQuickView !== null) {
+if ($activeQuickView !== null && $activeQuickView['group_by'] !== null) {
     foreach ($allFields as $f) {
-        if ($f['id'] === $activeQuickView['field_id']) {
+        if ($f['id'] === $activeQuickView['group_by']) {
             $groupField = $f;
             break;
         }
@@ -64,7 +68,11 @@ if ($groupField !== null && !filterHasValue($groupField, $rawFilterInput)) {
     $groups = $entryRepo->getDistinctValues($formId, $groupField['id']);
     include __DIR__ . '/../../templates/quick_view_index.php';
 } else {
-    $fields = ColumnSelection::resolve($allFields, $_GET);
+    $savedColumns = $activeQuickView['columns'] ?? null;
+    $queryCols = $_GET['cols'] ?? null;
+    $effectiveColumnIds = is_array($queryCols) ? array_map('intval', $queryCols) : $savedColumns;
+    $fields = ColumnSelection::filterByIds($allFields, $effectiveColumnIds);
+
     $filters = FilterRequest::parse($allFields, $_GET);
 
     $result = $entryRepo->search($formId, $filters, $perPage, ($page - 1) * $perPage);

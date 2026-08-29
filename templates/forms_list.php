@@ -1,4 +1,5 @@
 <h1>Forms</h1>
+<p class="meta"><a href="manage.php">Manage forms &amp; views &rarr;</a></p>
 <div class="card-grid">
 <?php foreach ($formsConfig as $formId => $formDef): ?>
     <div class="card">
@@ -6,12 +7,12 @@
         <?php if (!empty($formDef['date_created'])): ?>
         <p class="meta">Created <?= htmlspecialchars(substr((string) $formDef['date_created'], 0, 10)) ?></p>
         <?php else: ?>
-        <p class="meta warning">Form ID <?= (int) $formId ?> not found in the database &mdash; check config/forms.php</p>
+        <p class="meta warning">Form ID <?= (int) $formId ?> not found in the database &mdash; check it under <a href="manage.php">Manage forms</a></p>
         <?php endif; ?>
         <a href="view.php?form=<?= (int) $formId ?>">View data &amp; filters &rarr;</a>
     </div>
 <?php endforeach; ?>
 <?php if (empty($formsConfig)): ?>
-<p class="meta">No forms configured yet &mdash; add some to config/forms.php.</p>
+<p class="meta">No forms configured yet &mdash; add one under <a href="manage.php">Manage forms</a>.</p>
 <?php endif; ?>
 </div>

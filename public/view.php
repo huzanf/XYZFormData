@@ -10,17 +10,21 @@ require_once __DIR__ . '/../src/FormRepository.php';
 require_once __DIR__ . '/../src/EntryRepository.php';
 require_once __DIR__ . '/../src/FilterRequest.php';
 require_once __DIR__ . '/../src/ColumnSelection.php';
+require_once __DIR__ . '/../src/ConfigStore.php';
 
 $config = require __DIR__ . '/../config/config.php';
-$formsConfig = require __DIR__ . '/../config/forms.php';
 
 Auth::requireLogin($config);
+
+$store = new ConfigStore(__DIR__ . '/../data/views.json', __DIR__ . '/../config/forms.php');
 
 $formId = isset($_GET['form']) ? (int) $_GET['form'] : 0;
 $page = max(1, (int) ($_GET['page'] ?? 1));
 $perPage = $config['app']['per_page'];
 
-if (!isset($formsConfig[$formId])) {
+$formDef = $store->form($formId);
+
+if ($formDef === null) {
     http_response_code(404);
     $title = 'Not found';
     $content = '<h1>Not found</h1><p>Unknown form.</p><p><a href="index.php">&larr; Back to forms</a></p>';
@@ -28,8 +32,7 @@ if (!isset($formsConfig[$formId])) {
     exit;
 }
 
-$formDef = $formsConfig[$formId];
-$quickViews = $formDef['quick_views'] ?? [];
+$quickViews = $formDef['views'] ?? [];
 
 try {
     $pdo = Database::connect($config['db']);
@@ -47,8 +50,8 @@ $entryRepo = new EntryRepository($pdo, $tables);
 
 $allFields = $formRepo->getFields($formId);
 
-// Resolve the active quick view (if any) from ?qv=. An unrecognized slug
-// is treated the same as no quick view (falls back to Full Data).
+// Resolve the active view (if any) from ?qv=. An unrecognized slug is
+// treated the same as no view (falls back to Full Data).
 $qvSlug = isset($_GET['qv']) ? (string) $_GET['qv'] : null;
 $activeQuickView = null;
 foreach ($quickViews as $qv) {
@@ -62,9 +65,9 @@ if ($activeQuickView === null) {
 }
 
 $groupField = null;
-if ($activeQuickView !== null) {
+if ($activeQuickView !== null && $activeQuickView['group_by'] !== null) {
     foreach ($allFields as $f) {
-        if ($f['id'] === $activeQuickView['field_id']) {
+        if ($f['id'] === $activeQuickView['group_by']) {
             $groupField = $f;
             break;
         }
@@ -79,14 +82,18 @@ ob_start();
 include __DIR__ . '/../templates/tabs.php';
 
 if ($groupField !== null && !filterHasValue($groupField, $rawFilterInput)) {
-    // Quick view chosen but no specific value picked yet: show the
+    // A grouped view chosen but no specific value picked yet: show the
     // browsable index of that field's distinct values.
     $groups = $entryRepo->getDistinctValues($formId, $groupField['id']);
     include __DIR__ . '/../templates/quick_view_index.php';
 } else {
-    // Full Data, or a quick view with a value already selected (e.g.
-    // arrived via a quick-view-index link, or a bookmarked URL).
-    $fields = ColumnSelection::resolve($allFields, $_GET);
+    // Full Data, a view with no group-by (just a saved column layout), or
+    // a grouped view with a value already selected.
+    $savedColumns = $activeQuickView['columns'] ?? null;
+    $queryCols = $_GET['cols'] ?? null;
+    $effectiveColumnIds = is_array($queryCols) ? array_map('intval', $queryCols) : $savedColumns;
+    $fields = ColumnSelection::filterByIds($allFields, $effectiveColumnIds);
+
     $filters = FilterRequest::parse($allFields, $_GET);
 
     $result = $entryRepo->search($formId, $filters, $perPage, ($page - 1) * $perPage);
@@ -133,7 +140,7 @@ include __DIR__ . '/../templates/layout.php';
 
 /**
  * Whether a filter value has actually been set for this field in the
- * request — used to decide whether a quick view shows its browsable
+ * request — used to decide whether a grouped view shows its browsable
  * index (no value yet) or drills straight into a filtered table.
  */
 function filterHasValue(array $field, array $rawFilterInput): bool
