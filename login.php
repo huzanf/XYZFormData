@@ -40,8 +40,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } elseif (!$auth->emailExists($email)) {
             $error = 'No portal account found for that email address.';
             $step = 'email';
+        } elseif (!$auth->requestOtp($email, $config['mail'])) {
+            $error = "Couldn't send the login code email. Please contact your administrator "
+                . '(mail.from in config.php may be missing or misconfigured).';
+            $step = 'email';
         } else {
-            $auth->requestOtp($email, $config['mail']);
             $_SESSION['pending_otp_email'] = $email;
             $info = "We've emailed a 6-digit code to {$email}. It expires in 10 minutes.";
             $step = 'code';

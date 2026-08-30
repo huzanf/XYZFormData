@@ -32,20 +32,28 @@ final class Auth
         return $this->findActiveUserByEmail(trim(strtolower($email))) !== null;
     }
 
-    public function requestOtp(string $email, array $mailConfig): void
+    /**
+     * @return bool true if either an email was just sent successfully, or a
+     *              code from a moments-ago request is still valid (cooldown) —
+     *              false only if sending was actually attempted and failed, or
+     *              the account doesn't exist (that case is intentionally
+     *              indistinguishable from success to the caller, so a login
+     *              attempt can't be used to discover which emails have accounts).
+     */
+    public function requestOtp(string $email, array $mailConfig): bool
     {
         $email = trim(strtolower($email));
         $user = $this->findActiveUserByEmail($email);
 
         if ($user === null) {
-            return; // Nothing to send, and nothing that reveals that to the caller.
+            return true;
         }
 
         $recent = $this->pdo->prepare('SELECT created_at FROM login_otps WHERE user_id = ? ORDER BY id DESC LIMIT 1');
         $recent->execute([$user['id']]);
         $lastRequestedAt = $recent->fetchColumn();
         if ($lastRequestedAt && (time() - strtotime((string) $lastRequestedAt)) < self::OTP_RESEND_COOLDOWN_SECONDS) {
-            return;
+            return true;
         }
 
         $code = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -55,7 +63,7 @@ final class Auth
             'INSERT INTO login_otps (user_id, otp_hash, expires_at, requested_ip) VALUES (?, ?, ?, ?)'
         )->execute([$user['id'], password_hash($code, PASSWORD_DEFAULT), $expiresAt, self::clientIp()]);
 
-        Mailer::send(
+        $sent = Mailer::send(
             $mailConfig,
             $email,
             'Your ' . ($mailConfig['app_name'] ?? 'Portal') . ' login code',
@@ -63,7 +71,9 @@ final class Auth
                 . "If you didn't request this, you can ignore this email.\n"
         );
 
-        $this->recordAudit('otp_requested', (int) $user['id'], $email);
+        $this->recordAudit($sent ? 'otp_requested' : 'otp_send_failed', (int) $user['id'], $email);
+
+        return $sent;
     }
 
     public function verifyOtp(string $email, string $code): bool
