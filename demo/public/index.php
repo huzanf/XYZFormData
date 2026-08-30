@@ -8,7 +8,6 @@ require_once __DIR__ . '/../../src/EntryRepository.php';
 require_once __DIR__ . '/../../src/ConfigStore.php';
 require __DIR__ . '/../bootstrap.php';
 
-Auth::requireLogin($config);
 
 $store = new ConfigStore($viewsStorePath, $legacyFormsPath);
 $formsConfig = $store->forms();

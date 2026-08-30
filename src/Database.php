@@ -2,14 +2,20 @@
 
 declare(strict_types=1);
 
+/**
+ * Caches one PDO connection per named config (e.g. 'wp' for the read-only
+ * WordPress connection, 'portal' for this app's own users/audit-log
+ * database) so both can be open at once without interfering.
+ */
 final class Database
 {
-    private static ?PDO $connection = null;
+    /** @var array<string, PDO> */
+    private static array $connections = [];
 
-    public static function connect(array $config): PDO
+    public static function connect(array $config, string $name = 'default'): PDO
     {
-        if (self::$connection !== null) {
-            return self::$connection;
+        if (isset(self::$connections[$name])) {
+            return self::$connections[$name];
         }
 
         $dsn = sprintf(
@@ -19,12 +25,12 @@ final class Database
             $config['name']
         );
 
-        self::$connection = new PDO($dsn, $config['user'], $config['pass'], [
+        self::$connections[$name] = new PDO($dsn, $config['user'], $config['pass'], [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
             PDO::ATTR_DEFAULT_FETCH_MODE => PDO::FETCH_ASSOC,
             PDO::ATTR_EMULATE_PREPARES => false,
         ]);
 
-        return self::$connection;
+        return self::$connections[$name];
     }
 }

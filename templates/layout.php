@@ -10,7 +10,10 @@
 <header class="site-header">
     <a class="brand" href="index.php"><?= htmlspecialchars($config['app']['title']) ?></a>
     <?php if (class_exists('Auth') && Auth::isLoggedIn()): ?>
-    <a class="logout-link" href="logout.php">Log out</a>
+    <span class="header-user">
+        <?= htmlspecialchars(Auth::currentUserName() ?? '') ?><?= Auth::isAdmin() ? ' (admin)' : '' ?>
+        &middot; <a class="logout-link" href="logout.php">Log out</a>
+    </span>
     <?php endif; ?>
 </header>
 <main class="container">

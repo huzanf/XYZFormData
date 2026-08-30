@@ -1,5 +1,7 @@
 <h1>Forms</h1>
-<p class="meta"><a href="manage.php">Manage forms &amp; views &rarr;</a></p>
+<?php if (Auth::isAdmin()): ?>
+<p class="meta"><a href="manage.php">Manage forms &amp; views &rarr;</a> &middot; <a href="users.php">Manage users &rarr;</a></p>
+<?php endif; ?>
 <div class="card-grid">
 <?php foreach ($formsConfig as $formId => $formDef): ?>
     <div class="card">

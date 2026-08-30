@@ -14,7 +14,17 @@ require_once __DIR__ . '/src/ConfigStore.php';
 
 $config = require __DIR__ . '/config/config.php';
 
-Auth::requireLogin($config);
+try {
+    $portalPdo = Database::connect($config['portal_db'], 'portal');
+} catch (Throwable $e) {
+    http_response_code(500);
+    $title = 'Connection error';
+    $content = '<h1>Could not load the portal database</h1><p>' . htmlspecialchars($e->getMessage()) . '</p>';
+    include __DIR__ . '/templates/layout.php';
+    exit;
+}
+
+Auth::requireLogin($portalPdo);
 
 $store = new ConfigStore(__DIR__ . '/data/views.json', __DIR__ . '/config/forms.php');
 
@@ -35,7 +45,7 @@ if ($formDef === null) {
 $quickViews = $formDef['views'] ?? [];
 
 try {
-    $pdo = Database::connect($config['db']);
+    $pdo = Database::connect($config['db'], 'wp');
     $tables = SchemaDetector::tables($pdo, $config['db']['prefix'], $config['db']['name']);
 } catch (Throwable $e) {
     http_response_code(500);

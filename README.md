@@ -2,8 +2,11 @@
 
 A standalone PHP portal for viewing and downloading Gravity Forms data from
 your WordPress site — read directly from the WordPress MySQL database (no
-WordPress REST API required). Logging in shows a list of your forms
-(latest created first); clicking one shows:
+WordPress REST API required). Sign-in is per-person: each user gets an
+email + one-time-code login (no password to manage), with an `admin` /
+`viewer` role, added and removed from a **Manage Users** screen inside the
+portal. Logging in shows a list of your forms (latest created first);
+clicking one shows:
 
 - **The full data set** for that form by default, every field as a column.
 - **Named views** you define yourself from a **Manage** screen inside the
@@ -76,22 +79,40 @@ screen, and export before wiring up your real database.
    DB_TABLE_PREFIX=wp_        # match your WordPress table prefix
    ```
 
-3. **Set a portal password.** This portal has no per-user accounts — it's
-   a single shared password gating the whole thing, since it can display
-   and export personal/financial data. Generate a hash and put it in `.env`:
+3. **Create the portal's own database** — separate from WordPress, used
+   only for user accounts, one-time login codes, and the login audit log.
+   In cPanel's "MySQL® Databases" tool: create a new empty database and a
+   new user with full privileges on it. Then run `portal_schema.sql`
+   against that database once (e.g. via phpMyAdmin's Import tab) to create
+   its tables.
 
-   ```bash
-   php -r "echo password_hash('your-password-here', PASSWORD_DEFAULT), PHP_EOL;"
+   Add its credentials to `.env`:
+
+   ```
+   PORTAL_DB_HOST=127.0.0.1
+   PORTAL_DB_PORT=3306
+   PORTAL_DB_NAME=your_portal_db
+   PORTAL_DB_USER=your_portal_db_user
+   PORTAL_DB_PASS=choose-a-strong-password
    ```
 
-   ```
-   PORTAL_PASSWORD_HASH=$2y$10$...
+   And set `MAIL_FROM` to a real address on *your* domain (e.g.
+   `no-reply@xyzfoundation.net`) — login codes are emailed via PHP's
+   built-in `mail()`, and an address on an unrelated domain is very likely
+   to be marked as spam or rejected outright, since that's what SPF/DKIM
+   checks look at.
+
+4. **Add your first admin user directly in the database** (the Manage
+   Users screen needs an existing admin to sign in and use it):
+
+   ```sql
+   INSERT INTO users (name, email, role) VALUES ('Your Name', 'you@example.org', 'admin');
    ```
 
-   Leaving this blank disables login — only do that if the portal is
-   otherwise access-restricted (e.g. behind a VPN).
+   From then on, add/remove/deactivate everyone else from **Manage Users**
+   inside the portal.
 
-4. **Run it, log in, and add your forms from the Manage screen** (`Manage
+5. **Run it, log in, and add your forms from the Manage screen** (`Manage
    forms & views` link on the home page) — give each a Gravity Forms form
    ID and a label. That's the only thing you strictly need before you have
    a working Full Data view; named views (grouped browsing, chosen columns)
@@ -104,7 +125,7 @@ screen, and export before wiring up your real database.
    `config/forms.php` is no longer read — everything is managed from the
    Manage screen from then on.
 
-5. **Deploy it.**
+6. **Deploy it.**
 
    For local testing:
 
@@ -153,6 +174,26 @@ On any view's page, the filter panel's own column picker can further
 override the saved columns for that visit only (e.g. to peek at one extra
 field) without changing the saved view.
 
+## Managing users
+
+**Manage Users** (`users.php`, admin only) — add a person by name, email,
+and role (`admin` or `viewer`); deactivate them later (their account stays
+on record, just can't sign in — you can reactivate it any time). There are
+no passwords: signing in is always email + a fresh 6-digit code, valid for
+10 minutes.
+
+A few things worth knowing:
+
+- **One active session per person.** Signing in anywhere immediately signs
+  that person out everywhere else — there's no password to also protect a
+  stolen session, so this is the main defense if a browser session leaks.
+- **Auto sign-out after 30 minutes idle**, given this can show
+  personal/financial data.
+- Every sign-in, sign-out, and failed code attempt is written to
+  `audit_log` in the portal database, for later review if needed.
+- `admin` users get Manage Forms/Views/Users; `viewer` users get everything
+  else (view and export data) but not those.
+
 ## How filtering works
 
 Each field gets a filter control based on its Gravity Forms type:
@@ -180,13 +221,13 @@ as a safety limit.
 
 ```
 config/
-  config.php   # loads .env into a config array (db, app, auth settings)
+  config.php   # loads .env into a config array (wp db, portal db, mail, app settings)
   forms.php    # one-time seed for data/views.json on first run only
 data/
   views.json   # the real, editable-from-the-browser forms/views config
 src/
   Env.php               # tiny .env parser
-  Database.php          # PDO connection
+  Database.php          # PDO connections, cached per named config (wp / portal)
   SchemaDetector.php    # resolves Gravity Forms table names
   FormRepository.php    # reads form/field definitions, classifies filter types
   EntryRepository.php   # entries, filtering/intersection logic, distinct values
@@ -194,15 +235,20 @@ src/
   ColumnSelection.php   # resolves which fields to show as columns
   ConfigStore.php       # reads/writes data/views.json
   XlsxWriter.php        # dependency-free .xlsx writer (uses PHP's zip extension)
-  Auth.php              # single shared portal password (session-based)
+  Auth.php              # multi-user email + one-time-code login, roles, audit log
+  Mailer.php            # sends login-code emails via PHP's built-in mail()
 templates/     # plain PHP view templates (all output is HTML-escaped)
 assets/        # style.css
+portal_schema.sql  # run once against the portal's own (new, empty) database
 index.php      # lists all configured forms, latest first
 view.php       # tabs + filter panel + results table for one form
 export.php     # streams the current filtered set as .xlsx
 manage.php     # admin screen: add/edit/remove forms and their views
+users.php      # admin screen: add/edit/deactivate portal users
 login.php / logout.php
 demo/          # seeded SQLite sample data + a self-contained copy of the
                # app (its own index.php/view.php/etc under demo/public/)
                # for local preview via `php -S localhost:8000 -t demo/public`
+               # — login is simulated (always signed in as a demo admin),
+               # since the demo deliberately skips setting up a portal DB
 ```

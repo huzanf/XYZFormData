@@ -11,7 +11,8 @@ require_once __DIR__ . '/src/ConfigStore.php';
 
 $config = require __DIR__ . '/config/config.php';
 
-Auth::requireLogin($config);
+$portalPdo = Database::connect($config['portal_db'], 'portal');
+Auth::requireAdmin($portalPdo);
 
 $store = new ConfigStore(__DIR__ . '/data/views.json', __DIR__ . '/config/forms.php');
 
@@ -78,7 +79,7 @@ if ($formId === null) {
         $fieldsError = null;
 
         try {
-            $pdo = Database::connect($config['db']);
+            $pdo = Database::connect($config['db'], 'wp');
             $tables = SchemaDetector::tables($pdo, $config['db']['prefix'], $config['db']['name']);
             $formRepo = new FormRepository($pdo, $tables);
             $allFields = $formRepo->getFields($formId);
