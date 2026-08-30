@@ -25,6 +25,10 @@ final class Mailer
             . "Content-Type: text/plain; charset=UTF-8\r\n"
             . 'X-Mailer: PHP/' . phpversion();
 
-        return mail($to, $subject, $body, $headers);
+        // Force the envelope sender (SMTP MAIL FROM / Return-Path) to match
+        // the configured From address. Without this, sendmail picks a
+        // server-assigned default that can differ per subdomain/vhost and
+        // silently fail SPF even though the visible From header is correct.
+        return mail($to, $subject, $body, $headers, '-f' . $fromAddress);
     }
 }
