@@ -64,19 +64,26 @@ screen, and export before wiring up your real database.
    Restrict the host (`'%'`) to the actual IP this app will connect from if
    possible.
 
-2. **Copy the env file and fill in real values:**
+2. **Copy the config file and fill in real values:**
 
    ```bash
-   cp .env.example .env
+   cp config/config.sample.php config/config.php
    ```
 
-   ```
-   DB_HOST=your-db-host
-   DB_PORT=3306
-   DB_NAME=your_wordpress_db
-   DB_USER=wp_readonly
-   DB_PASS=choose-a-strong-password
-   DB_TABLE_PREFIX=wp_        # match your WordPress table prefix
+   `config.php` is a plain PHP file that returns an array — edit the
+   values directly in it. It's git-ignored (never commit it) and also
+   blocked from direct web access by `config/.htaccess`, so it's safe to
+   keep real credentials in it. Fill in the `db` section:
+
+   ```php
+   'db' => [
+       'host'   => 'your-db-host',
+       'port'   => '3306',
+       'name'   => 'your_wordpress_db',
+       'user'   => 'wp_readonly',
+       'pass'   => 'choose-a-strong-password',
+       'prefix' => 'wp_',   // match your WordPress table prefix
+   ],
    ```
 
 3. **Create the portal's own database** — separate from WordPress, used
@@ -86,21 +93,36 @@ screen, and export before wiring up your real database.
    against that database once (e.g. via phpMyAdmin's Import tab) to create
    its tables.
 
-   Add its credentials to `.env`:
+   Fill in its credentials in the `portal_db` section of `config.php`:
 
-   ```
-   PORTAL_DB_HOST=127.0.0.1
-   PORTAL_DB_PORT=3306
-   PORTAL_DB_NAME=your_portal_db
-   PORTAL_DB_USER=your_portal_db_user
-   PORTAL_DB_PASS=choose-a-strong-password
+   ```php
+   'portal_db' => [
+       'host' => '127.0.0.1',
+       'port' => '3306',
+       'name' => 'your_portal_db',
+       'user' => 'your_portal_db_user',
+       'pass' => 'choose-a-strong-password',
+   ],
    ```
 
-   And set `MAIL_FROM` to a real address on *your* domain (e.g.
-   `no-reply@xyzfoundation.net`) — login codes are emailed via PHP's
-   built-in `mail()`, and an address on an unrelated domain is very likely
-   to be marked as spam or rejected outright, since that's what SPF/DKIM
-   checks look at.
+   And set `mail.from` to a real address on a domain *this server* is
+   authorized to send as:
+
+   ```php
+   'mail' => [
+       'from'     => 'no-reply@dashboard.example.org',
+       'app_name' => 'XYZ Form Data Portal',
+   ],
+   ```
+
+   Login codes are emailed via PHP's built-in `mail()`. If your main
+   domain's real email runs elsewhere (e.g. Google Workspace, Microsoft
+   365), **don't** use an address on that domain here — it will very
+   likely be rejected as spoofing. Use a subdomain this server itself
+   hosts instead (e.g. the one this portal runs on), and check cPanel's
+   **Email → Email Deliverability** for that subdomain to get the SPF/DKIM
+   DNS records to add wherever your domain's DNS is managed (e.g.
+   Cloudflare, if that's not also cPanel).
 
 4. **Add your first admin user directly in the database** (the Manage
    Users screen needs an existing admin to sign in and use it):
@@ -136,14 +158,14 @@ screen, and export before wiring up your real database.
    For real hosting: **extract everything directly into the
    domain/subdomain's document root** (e.g. `public_html/dashboard/` for a
    subdomain) — `index.php`, `view.php`, etc. sit right at the top level
-   alongside `config/`, `src/`, `templates/`, `data/`, and `.env`. No
-   document-root change, no `.htaccess` rewrite trick, nothing else to
-   configure — visiting the domain just works.
+   alongside `config/`, `src/`, `templates/`, and `data/`. No document-root
+   change, no `.htaccess` rewrite trick, nothing else to configure —
+   visiting the domain just works.
 
-   `config/`, `src/`, `templates/`, `data/`, and `.env` are protected from
-   direct web access by their own `.htaccess` files (`Require all
-   denied`), so even though they're sitting right next to the public PHP
-   files, none of them — including your DB password in `.env` — can be
+   `config/`, `src/`, `templates/`, and `data/` are protected from direct
+   web access by their own `.htaccess` files (`Require all denied`), so
+   even though they're sitting right next to the public PHP files, none of
+   them — including your DB passwords in `config/config.php` — can be
    fetched directly by URL. This needs Apache (or another server that
    honors `.htaccess`) with `AllowOverride All` (or at least `AuthConfig`)
    for the directory, which is the default on essentially all shared
@@ -221,12 +243,12 @@ as a safety limit.
 
 ```
 config/
-  config.php   # loads .env into a config array (wp db, portal db, mail, app settings)
+  config.sample.php   # template — copy to config.php and fill in real values
+  config.php   # your real config (git-ignored): wp db, portal db, mail, app settings
   forms.php    # one-time seed for data/views.json on first run only
 data/
   views.json   # the real, editable-from-the-browser forms/views config
 src/
-  Env.php               # tiny .env parser
   Database.php          # PDO connections, cached per named config (wp / portal)
   SchemaDetector.php    # resolves Gravity Forms table names
   FormRepository.php    # reads form/field definitions, classifies filter types

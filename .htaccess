@@ -1,8 +1,0 @@
-# Block direct access to .env — it holds your DB credentials and portal
-# password hash, and must never be servable as a plain text file.
-<Files ".env">
-    Require all denied
-</Files>
-<FilesMatch "\.env\.">
-    Require all denied
-</FilesMatch>

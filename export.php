@@ -2,7 +2,6 @@
 
 declare(strict_types=1);
 
-require_once __DIR__ . '/src/Env.php';
 require_once __DIR__ . '/src/Auth.php';
 require_once __DIR__ . '/src/Database.php';
 require_once __DIR__ . '/src/SchemaDetector.php';
@@ -15,7 +14,13 @@ require_once __DIR__ . '/src/ConfigStore.php';
 
 $config = require __DIR__ . '/config/config.php';
 
-$portalPdo = Database::connect($config['portal_db'], 'portal');
+try {
+    $portalPdo = Database::connect($config['portal_db'], 'portal');
+} catch (Throwable $e) {
+    http_response_code(500);
+    exit('Could not load the portal database: ' . $e->getMessage());
+}
+
 Auth::requireLogin($portalPdo);
 
 $store = new ConfigStore(__DIR__ . '/data/views.json', __DIR__ . '/config/forms.php');
@@ -28,8 +33,13 @@ if ($formDef === null) {
     exit('Unknown form.');
 }
 
-$pdo = Database::connect($config['db'], 'wp');
-$tables = SchemaDetector::tables($pdo, $config['db']['prefix'], $config['db']['name']);
+try {
+    $pdo = Database::connect($config['db'], 'wp');
+    $tables = SchemaDetector::tables($pdo, $config['db']['prefix'], $config['db']['name']);
+} catch (Throwable $e) {
+    http_response_code(500);
+    exit('Could not load data: ' . $e->getMessage());
+}
 
 $formRepo = new FormRepository($pdo, $tables);
 $entryRepo = new EntryRepository($pdo, $tables);

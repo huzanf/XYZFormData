@@ -1,4 +1,4 @@
-.env
+config/config.php
 .DS_Store
 demo/demo.sqlite
 data/views.json

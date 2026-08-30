@@ -23,7 +23,7 @@ final class SchemaDetector
         if (!self::tableExists($pdo, $dbName, $entryTable)) {
             throw new RuntimeException(
                 "Could not find table '{$entryTable}' in database '{$dbName}'. " .
-                "Check DB_TABLE_PREFIX in .env. If this WordPress site runs a Gravity " .
+                "Check the 'prefix' setting under 'db' in config/config.php. If this WordPress site runs a Gravity " .
                 "Forms version older than 2.3, it uses the legacy rg_lead/rg_form " .
                 "tables, which this portal does not currently read."
             );
