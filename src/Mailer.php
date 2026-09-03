@@ -25,10 +25,12 @@ final class Mailer
             . "Content-Type: text/plain; charset=UTF-8\r\n"
             . 'X-Mailer: PHP/' . phpversion();
 
-        // Force the envelope sender (SMTP MAIL FROM / Return-Path) to match
-        // the configured From address. Without this, sendmail picks a
-        // server-assigned default that can differ per subdomain/vhost and
-        // silently fail SPF even though the visible From header is correct.
-        return mail($to, $subject, $body, $headers, '-f' . $fromAddress);
+        // Deliberately no 5th (-f) argument here: on this cPanel/Exim setup,
+        // an explicit envelope-sender override bypasses the trusted local
+        // submission path that cPanel uses to auto-DKIM-sign outgoing mail,
+        // which hurt deliverability more than the alternative it was meant
+        // to fix. Letting sendmail derive the envelope sender from the From
+        // header (as the working old portal does) keeps that signing intact.
+        return mail($to, $subject, $body, $headers);
     }
 }
