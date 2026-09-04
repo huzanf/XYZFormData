@@ -13,6 +13,11 @@ return [
         'title'           => 'XYZ Form Data Portal',
         'per_page'        => 50,
         'max_export_rows' => 20000,
+        // Which visual theme to render: 'default' (the original design) or
+        // 'custom1' (the redesigned one). Both use the exact same data and
+        // logic — this only changes templates/themes/<name>/* and
+        // assets/themes/<name>/style.css.
+        'theme'           => 'default',
     ],
 
     // Read-only connection into the WordPress database, used only to read

@@ -36,11 +36,16 @@ $tables = [
     'entry_meta' => 'gf_entry_meta',
 ];
 
+// ?theme=custom1 lets you preview either theme locally; the real app
+// always reads this from config.php instead.
+$demoTheme = ($_GET['theme'] ?? '') === 'custom1' ? 'custom1' : 'default';
+
 $config = [
     'app' => [
         'title'           => 'XYZ Form Data Portal — Demo',
         'per_page'        => 50,
         'max_export_rows' => 20000,
+        'theme'           => $demoTheme,
     ],
 ];
 
