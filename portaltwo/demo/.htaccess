@@ -1,0 +1,10 @@
+# Block all direct web access to this folder on a real deployment. The
+# demo is meant to be run locally via `php -S localhost:8000 -t demo/public`
+# (the built-in PHP dev server ignores .htaccess), not served live.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>
