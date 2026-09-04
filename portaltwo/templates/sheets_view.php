@@ -17,30 +17,11 @@
     <tr><?php foreach ($row as $cell): ?><td><?= htmlspecialchars($cell) ?></td><?php endforeach; ?></tr>
     <?php endforeach; ?>
     <?php if (empty($block['rows'])): ?>
-    <tr><td colspan="<?= count($block['headers']) ?>">No entries.</td></tr>
-    <?php endif; ?>
-    </tbody>
-    </table>
-    </div>
-
-<?php elseif ($sheet['layout'] === 'stacked'): ?>
-    <?php foreach ($sheet['blocks'] as $block): ?>
-    <h3><?= htmlspecialchars($block['heading'] ?? '') ?></h3>
-    <div class="table-wrap">
-    <table>
-    <thead><tr><?php foreach ($block['headers'] as $h): ?><th><?= htmlspecialchars($h) ?></th><?php endforeach; ?></tr></thead>
-    <tbody>
-    <?php if (empty($block['rows'])): ?>
     <tr><td colspan="<?= count($block['headers']) ?>">No data available.</td></tr>
-    <?php else: ?>
-    <?php foreach ($block['rows'] as $row): ?>
-    <tr><?php foreach ($row as $cell): ?><td><?= htmlspecialchars($cell) ?></td><?php endforeach; ?></tr>
-    <?php endforeach; ?>
     <?php endif; ?>
     </tbody>
     </table>
     </div>
-    <?php endforeach; ?>
 
 <?php else: /* side_by_side */ ?>
     <div class="sheet-columns">

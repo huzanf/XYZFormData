@@ -75,9 +75,14 @@ $ids = array_slice($ids, 0, $config['app']['max_export_rows']);
 $entries = $entryRepo->fetchEntriesByIds($ids);
 $values = $entryRepo->getValuesForEntries($ids);
 
+// One admin-configured sheet definition can expand into several
+// independent output sheets (e.g. Member Category fans out into one sheet
+// per category value) — see SheetBuilder's class docblock.
 $sheets = [];
 foreach ($sheetDefs as $sheetDef) {
-    $sheets[] = $builder->build($formId, $allFields, $entries, $values, $sheetDef);
+    foreach ($builder->build($formId, $allFields, $entries, $values, $sheetDef) as $builtSheet) {
+        $sheets[] = $builtSheet;
+    }
 }
 
 if (($_GET['export'] ?? '') === 'xlsx') {

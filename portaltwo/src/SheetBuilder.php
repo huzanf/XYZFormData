@@ -3,19 +3,23 @@
 declare(strict_types=1);
 
 /**
- * Builds the derived, pivoted "sheet" views defined per form in
- * config/sheets.php — replacing the manual Excel work of collating a
+ * Builds the derived, pivoted "sheet" views defined per form (via
+ * SheetConfigStore) — replacing the manual Excel work of collating a
  * "Complete Table / Group Sheet / Member Category X / Event List" set of
  * tabs by hand from a Gravity Forms export. Used identically by sheets.php
  * (on-screen) and its multi-sheet Excel export, so both always agree.
  *
- * Every sheet definition builds down to a normalized shape:
- *   ['label' => string, 'layout' => 'flat'|'stacked'|'side_by_side', 'blocks' => [...]]
+ * One admin-configured sheet definition can expand into several
+ * independent output sheets — e.g. a single "Member Category" definition
+ * fans out into one sheet per category value (a "Junior" sheet, a "Senior"
+ * sheet, etc.), each its own top-level section on screen and its own tab
+ * in the Excel export, rather than one definition always meaning one
+ * output sheet.
+ *
+ * Each output sheet builds down to a normalized shape:
+ *   ['label' => string, 'layout' => 'flat'|'side_by_side', 'blocks' => [...]]
  *
  * - layout 'flat':         exactly one block, rendered as a single table.
- * - layout 'stacked':      each block is its own heading + full-width
- *                           table, one below the next (e.g. one table per
- *                           Member Category value).
  * - layout 'side_by_side': each block is its own mini-table, placed left
  *                           to right (e.g. one column-group per Group
  *                           value, or per Event field).
@@ -32,15 +36,16 @@ final class SheetBuilder
      * @param array $fields  this form's fields, from FormRepository::getFields()
      * @param array $entries all entries for this form (id, date_created, status)
      * @param array $values  entry_id => field_id => string[], from EntryRepository::getValuesForEntries()
-     * @param array $sheetDef one entry from config/sheets.php's 'sheets' list
+     * @param array $sheetDef one entry from SheetConfigStore::sheetsForForm()
+     * @return array[] one or more independent output sheets (see class docblock)
      */
     public function build(int $formId, array $fields, array $entries, array $values, array $sheetDef): array
     {
         return match ($sheetDef['type']) {
-            'complete'         => $this->buildComplete($fields, $entries, $values, $sheetDef),
-            'group_columns'    => $this->buildGroupColumns($formId, $fields, $entries, $values, $sheetDef),
+            'complete'         => [$this->buildComplete($fields, $entries, $values, $sheetDef)],
+            'group_columns'    => [$this->buildGroupColumns($formId, $fields, $entries, $values, $sheetDef)],
             'value_sections'   => $this->buildValueSections($formId, $fields, $entries, $values, $sheetDef),
-            'presence_columns' => $this->buildPresenceColumns($fields, $entries, $values, $sheetDef),
+            'presence_columns' => [$this->buildPresenceColumns($fields, $entries, $values, $sheetDef)],
             default            => throw new InvalidArgumentException("Unknown sheet type '{$sheetDef['type']}'."),
         };
     }
@@ -112,10 +117,14 @@ final class SheetBuilder
     }
 
     /**
-     * One stacked, full-width table per distinct value of category_by
-     * (e.g. "Member Category Junior", "Member Category Parent"). A value
-     * with no matching entries still gets its own empty table, as long as
-     * it's one of the field's configured Gravity Forms choices.
+     * One independent output sheet per distinct value of category_by (e.g.
+     * a "Member Category — Junior" sheet, a "Member Category — Parent"
+     * sheet), each its own top-level section on screen and its own tab in
+     * the Excel export. A value with no matching entries still gets its
+     * own (empty) sheet, as long as it's one of the field's configured
+     * Gravity Forms choices.
+     *
+     * @return array[]
      */
     private function buildValueSections(int $formId, array $fields, array $entries, array $values, array $sheetDef): array
     {
@@ -123,11 +132,10 @@ final class SheetBuilder
         $columns = $this->resolveColumns($fields, $sheetDef['columns']);
         $categoryValues = $this->resolveFieldValues($formId, $categoryField);
         $sectionLabel = $sheetDef['label'] ?? 'Category';
+        $headers = array_map(static fn (array $f) => $f['label'], $columns);
 
-        $blocks = [];
+        $sheets = [];
         foreach ($categoryValues as $categoryValue) {
-            $headers = array_map(static fn (array $f) => $f['label'], $columns);
-
             $rows = [];
             foreach ($entries as $entry) {
                 $entryId = (int) $entry['id'];
@@ -142,10 +150,14 @@ final class SheetBuilder
                 $rows[] = $row;
             }
 
-            $blocks[] = ['heading' => $sectionLabel . ' ' . $categoryValue, 'headers' => $headers, 'rows' => $rows];
+            $sheets[] = [
+                'label'  => $sectionLabel . ' — ' . $categoryValue,
+                'layout' => 'flat',
+                'blocks' => [['heading' => null, 'headers' => $headers, 'rows' => $rows]],
+            ];
         }
 
-        return ['label' => $sectionLabel, 'layout' => 'stacked', 'blocks' => $blocks];
+        return $sheets;
     }
 
     /**

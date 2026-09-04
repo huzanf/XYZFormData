@@ -93,7 +93,7 @@ final class XlsxWriter
     /**
      * Streams a multi-sheet .xlsx built from SheetBuilder's normalized
      * output — one worksheet per $sheets entry:
-     *   ['label' => string, 'layout' => 'flat'|'stacked'|'side_by_side', 'blocks' => [...]]
+     *   ['label' => string, 'layout' => 'flat'|'side_by_side', 'blocks' => [...]]
      * Each block is ['heading' => ?string, 'headers' => string[], 'rows' => string[][]].
      *
      * @param array[] $sheets
@@ -143,45 +143,16 @@ final class XlsxWriter
 
         foreach (array_values($sheets) as $i => $sheet) {
             $xml = match ($sheet['layout']) {
-                'stacked'      => self::stackedSheetXml($sheet['blocks']),
                 'side_by_side' => self::sideBySideSheetXml($sheet['blocks']),
-                default        => self::sheetXml($sheet['blocks'][0]['headers'], $sheet['blocks'][0]['rows']),
+                default        => self::sheetXml(
+                    $sheet['blocks'][0]['headers'],
+                    $sheet['blocks'][0]['rows'] !== [] ? $sheet['blocks'][0]['rows'] : [['No data available.']]
+                ),
             };
             $zip->addFromString('xl/worksheets/sheet' . ($i + 1) . '.xml', $xml);
         }
 
         $zip->close();
-    }
-
-    private static function stackedSheetXml(array $blocks): string
-    {
-        $xml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
-        $xml .= '<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">';
-        $xml .= '<cols><col min="1" max="60" width="20" customWidth="1"/></cols>';
-        $xml .= '<sheetData>';
-
-        $rowNum = 1;
-        foreach ($blocks as $block) {
-            if ($block['heading'] !== null) {
-                $xml .= '<row r="' . $rowNum . '">' . self::cellsXml(1, $rowNum, [$block['heading']], 1) . '</row>';
-                $rowNum++;
-            }
-
-            $xml .= '<row r="' . $rowNum . '">' . self::cellsXml(1, $rowNum, $block['headers'], 1) . '</row>';
-            $rowNum++;
-
-            $rows = $block['rows'] !== [] ? $block['rows'] : [['No data available.']];
-            foreach ($rows as $row) {
-                $xml .= '<row r="' . $rowNum . '">' . self::cellsXml(1, $rowNum, $row, 0) . '</row>';
-                $rowNum++;
-            }
-
-            $rowNum++; // blank separator row before the next block
-        }
-
-        $xml .= '</sheetData></worksheet>';
-
-        return $xml;
     }
 
     private static function sideBySideSheetXml(array $blocks): string
