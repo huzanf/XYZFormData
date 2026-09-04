@@ -34,13 +34,17 @@ $entryRepo = new EntryRepository($pdo, $tables);
 
 $allFields = $formRepo->getFields($formId);
 
-// The demo deliberately has no portal_db (see demo/bootstrap.php), so the
-// portal-only payment/hidden-entry overrides just aren't available here —
-// entries_table.php still expects these variables to exist, defaulted to
-// "nothing configured, nothing hidden".
-$paymentConfig = null;
+// Payment visibility rules come from ConfigStore, which the demo does
+// have (no portal_db needed for that). Hiding/mark-paid do need portal_db
+// though, which the demo deliberately doesn't set up (see
+// demo/bootstrap.php) — those just default to "nothing hidden".
+$paymentConfig = $store->paymentConfig($formId);
 $hiddenIds = [];
 $hiddenMode = false;
+
+require_once __DIR__ . '/../../src/SheetConfigStore.php';
+$sheetStore = new SheetConfigStore($sheetsStorePath, $legacySheetsPath);
+$hasSheets = !empty($sheetStore->sheetsForForm($formId));
 
 $qvSlug = isset($_GET['qv']) ? (string) $_GET['qv'] : null;
 $activeQuickView = null;
@@ -82,7 +86,7 @@ if ($groupField !== null && !filterHasValue($groupField, $rawFilterInput)) {
 
     $filters = FilterRequest::parse($allFields, $_GET);
 
-    $result = $entryRepo->search($formId, $filters, $perPage, ($page - 1) * $perPage);
+    $result = $entryRepo->search($formId, $filters, $perPage, ($page - 1) * $perPage, $paymentConfig, $hiddenIds);
     $total = $result['total'];
     $entries = $result['entries'];
     $entryIds = array_column($entries, 'id');

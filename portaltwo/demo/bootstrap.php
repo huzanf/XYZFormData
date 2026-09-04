@@ -46,6 +46,8 @@ $config = [
 
 $viewsStorePath = __DIR__ . '/views.json';
 $legacyFormsPath = __DIR__ . '/forms.php';
+$sheetsStorePath = __DIR__ . '/sheets_store.json';
+$legacySheetsPath = __DIR__ . '/sheets.php';
 
 if (session_status() !== PHP_SESSION_ACTIVE) {
     session_start();
@@ -53,3 +55,18 @@ if (session_status() !== PHP_SESSION_ACTIVE) {
 $_SESSION['user_id'] = 1;
 $_SESSION['user_name'] = 'Demo Admin';
 $_SESSION['user_role'] = 'admin';
+
+// Seed a working Payment example out of the box (form 2's "Payment
+// Method" field, seeded Online/Cash by demo/seed.php) so the Payment
+// section and the data table's Payment column have something to show
+// without needing to configure it by hand first.
+require_once __DIR__ . '/../src/ConfigStore.php';
+$demoConfigStore = new ConfigStore($viewsStorePath, $legacyFormsPath);
+if ($demoConfigStore->paymentConfig(2) === null) {
+    $demoConfigStore->savePaymentConfig(2, [
+        'enabled'          => true,
+        'mode_field'       => 6,
+        'offline_value'    => 'Cash',
+        'success_statuses' => ['Paid'],
+    ]);
+}
