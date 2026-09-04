@@ -131,6 +131,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $sheetStore->deleteSheet($formId, (string) ($_POST['slug'] ?? ''));
             header('Location: manage.php?form=' . $formId . '#sheets');
             exit;
+
+        case 'save_payment':
+            if (($_POST['enabled'] ?? '') === '1') {
+                $statuses = array_values(array_filter(array_map(
+                    'trim',
+                    explode(',', (string) ($_POST['success_statuses'] ?? 'Paid'))
+                )));
+                $store->savePaymentConfig($formId, [
+                    'enabled'          => true,
+                    'mode_field'       => (int) ($_POST['mode_field'] ?? 0),
+                    'offline_value'    => trim((string) ($_POST['offline_value'] ?? '')),
+                    'success_statuses' => empty($statuses) ? ['Paid'] : $statuses,
+                ]);
+            } else {
+                $store->savePaymentConfig($formId, null);
+            }
+            header('Location: manage.php?form=' . $formId . '#payment');
+            exit;
     }
 }
 
@@ -164,9 +182,11 @@ if ($formId === null) {
 
         $views = $formEntry['views'] ?? [];
         $sheets = $sheetStore->sheetsForForm($formId);
+        $paymentConfig = $store->paymentConfig($formId);
         $title = 'Manage Views & Sheets — ' . $formEntry['label'];
         include __DIR__ . '/templates/manage_views.php';
         include __DIR__ . '/templates/manage_sheets.php';
+        include __DIR__ . '/templates/manage_payment.php';
     }
 }
 

@@ -10,6 +10,7 @@ require_once __DIR__ . '/src/EntryRepository.php';
 require_once __DIR__ . '/src/FilterRequest.php';
 require_once __DIR__ . '/src/ColumnSelection.php';
 require_once __DIR__ . '/src/ConfigStore.php';
+require_once __DIR__ . '/src/EntryOverrideStore.php';
 
 $config = require __DIR__ . '/config/config.php';
 
@@ -56,8 +57,12 @@ try {
 
 $formRepo = new FormRepository($pdo, $tables);
 $entryRepo = new EntryRepository($pdo, $tables);
+$overrideStore = new EntryOverrideStore($portalPdo);
 
 $allFields = $formRepo->getFields($formId);
+$paymentConfig = $store->paymentConfig($formId);
+$hiddenIds = $overrideStore->hiddenIdsForForm($formId);
+$hiddenMode = Auth::isAdmin() && ($_GET['hidden'] ?? '') === '1';
 
 // Resolve the active view (if any) from ?qv=. An unrecognized slug is
 // treated the same as no view (falls back to Full Data).
@@ -105,11 +110,24 @@ if ($groupField !== null && !filterHasValue($groupField, $rawFilterInput)) {
 
     $filters = FilterRequest::parse($allFields, $_GET);
 
-    $result = $entryRepo->search($formId, $filters, $perPage, ($page - 1) * $perPage);
+    if ($hiddenMode) {
+        // Review mode: show ONLY the hidden entries for this form (still
+        // respecting the current filters), so an admin can find and
+        // restore one — payment visibility doesn't apply here, since
+        // we're deliberately looking past the normal rules.
+        $unfilteredIds = $entryRepo->matchingEntryIds($formId, $filters);
+        $ids = array_values(array_intersect($unfilteredIds, $hiddenIds));
+        $pageIds = array_slice($ids, ($page - 1) * $perPage, $perPage);
+        $result = ['total' => count($ids), 'entries' => $entryRepo->fetchEntriesByIds($pageIds)];
+    } else {
+        $result = $entryRepo->search($formId, $filters, $perPage, ($page - 1) * $perPage, $paymentConfig, $hiddenIds);
+    }
+
     $total = $result['total'];
     $entries = $result['entries'];
     $entryIds = array_column($entries, 'id');
     $values = $entryRepo->getValuesForEntries($entryIds);
+    $paidMap = $overrideStore->paidMap($formId, $entryIds);
 
     // Build the filter panel's UI data: for choice/multi fields, options
     // come from values actually present in the data (so they always match

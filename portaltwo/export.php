@@ -11,6 +11,7 @@ require_once __DIR__ . '/src/FilterRequest.php';
 require_once __DIR__ . '/src/ColumnSelection.php';
 require_once __DIR__ . '/src/XlsxWriter.php';
 require_once __DIR__ . '/src/ConfigStore.php';
+require_once __DIR__ . '/src/EntryOverrideStore.php';
 
 $config = require __DIR__ . '/config/config.php';
 
@@ -64,7 +65,11 @@ $fields = ColumnSelection::filterByIds($allFields, $effectiveColumnIds);
 
 $filters = FilterRequest::parse($allFields, $_GET);
 
-$ids = $entryRepo->matchingEntryIds($formId, $filters);
+$overrideStore = new EntryOverrideStore($portalPdo);
+$paymentConfig = $store->paymentConfig($formId);
+$hiddenIds = $overrideStore->hiddenIdsForForm($formId);
+
+$ids = $entryRepo->matchingEntryIds($formId, $filters, $paymentConfig, $hiddenIds);
 $ids = array_slice($ids, 0, $config['app']['max_export_rows']);
 
 $entries = $entryRepo->fetchEntriesByIds($ids);

@@ -10,6 +10,7 @@ require_once __DIR__ . '/src/EntryRepository.php';
 require_once __DIR__ . '/src/SheetBuilder.php';
 require_once __DIR__ . '/src/ConfigStore.php';
 require_once __DIR__ . '/src/SheetConfigStore.php';
+require_once __DIR__ . '/src/EntryOverrideStore.php';
 
 $config = require __DIR__ . '/config/config.php';
 
@@ -70,7 +71,13 @@ $allFields = $formRepo->getFields($formId);
 
 // Sheets reflect the whole current dataset, not a filtered page — same
 // row cap as export.php uses, for the same reason (bounded worst case).
-$ids = $entryRepo->matchingEntryIds($formId, []);
+// Same visibility rules as everywhere else: hidden entries and
+// not-yet-paid online entries are excluded here too.
+$overrideStore = new EntryOverrideStore($portalPdo);
+$paymentConfig = $store->paymentConfig($formId);
+$hiddenIds = $overrideStore->hiddenIdsForForm($formId);
+
+$ids = $entryRepo->matchingEntryIds($formId, [], $paymentConfig, $hiddenIds);
 $ids = array_slice($ids, 0, $config['app']['max_export_rows']);
 $entries = $entryRepo->fetchEntriesByIds($ids);
 $values = $entryRepo->getValuesForEntries($ids);

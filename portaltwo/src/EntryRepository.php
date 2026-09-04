@@ -15,9 +15,16 @@ final class EntryRepository
      * one large dynamic JOIN, which keeps each filter's SQL simple and
      * correct regardless of how many are combined.
      *
+     * $paymentConfig (from ConfigStore::paymentConfig(), or null) and
+     * $hiddenIds (from EntryOverrideStore::hiddenIdsForForm()) are applied
+     * last, after the caller's own filters, so every entry point (Full
+     * Data, quick views, Sheets, export) sees the same visibility rules
+     * without each having to re-implement them.
+     *
+     * @param int[] $hiddenIds
      * @return int[]
      */
-    public function matchingEntryIds(int $formId, array $filters): array
+    public function matchingEntryIds(int $formId, array $filters, ?array $paymentConfig = null, array $hiddenIds = []): array
     {
         $ids = array_column($this->baseEntries($formId), 'id');
         $ids = array_map('intval', $ids);
@@ -27,16 +34,118 @@ final class EntryRepository
             $ids = array_values(array_intersect($ids, $matches));
         }
 
+        if ($paymentConfig !== null && !empty($paymentConfig['enabled'])) {
+            $ids = $this->applyPaymentVisibility($ids, $paymentConfig);
+        }
+
+        if (!empty($hiddenIds)) {
+            $ids = array_values(array_diff($ids, $hiddenIds));
+        }
+
         return $ids;
+    }
+
+    /**
+     * Drops online-payment entries that haven't actually succeeded yet
+     * (Gravity Forms keeps the entry even when checkout was abandoned).
+     * An entry is only ever excluded here if its configured "mode" field
+     * says it's an online payment — offline/cash entries are never
+     * filtered by this, regardless of GF's payment_status for them.
+     *
+     * @param int[] $ids
+     * @return int[]
+     */
+    private function applyPaymentVisibility(array $ids, array $paymentConfig): array
+    {
+        if (empty($ids)) {
+            return $ids;
+        }
+
+        $modeValues = $this->getFieldValuesForIds($ids, (int) $paymentConfig['mode_field']);
+        $paymentInfo = $this->fetchPaymentInfo($ids);
+        $offlineValue = (string) $paymentConfig['offline_value'];
+        $successStatuses = $paymentConfig['success_statuses'] ?? ['Paid'];
+
+        return array_values(array_filter($ids, function (int $id) use ($modeValues, $paymentInfo, $offlineValue, $successStatuses) {
+            if (($modeValues[$id] ?? '') === $offlineValue) {
+                return true; // offline/cash entries are always visible here
+            }
+
+            $info = $paymentInfo[$id] ?? ['payment_status' => '', 'transaction_id' => ''];
+
+            return $info['transaction_id'] !== '' && in_array($info['payment_status'], $successStatuses, true);
+        }));
+    }
+
+    /**
+     * A single field's first value per entry (unlike getValuesForEntries,
+     * scoped to one field and returned as a plain string, for cheap
+     * per-entry lookups like the payment-mode field).
+     *
+     * @param int[] $ids
+     * @return array<int, string>
+     */
+    private function getFieldValuesForIds(array $ids, int $fieldId): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->pdo->prepare(
+            "SELECT entry_id, meta_value FROM {$this->tables['entry_meta']}
+             WHERE entry_id IN ({$placeholders}) AND (meta_key = ? OR meta_key LIKE ?)"
+        );
+        $stmt->execute([...$ids, (string) $fieldId, $fieldId . '.%']);
+
+        $values = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $entryId = (int) $row['entry_id'];
+            if (!isset($values[$entryId])) {
+                $values[$entryId] = (string) $row['meta_value'];
+            }
+        }
+
+        return $values;
+    }
+
+    /**
+     * Gravity Forms' own core payment columns (not entry_meta) for a batch
+     * of entries.
+     *
+     * @param int[] $ids
+     * @return array<int, array{payment_status:string, transaction_id:string}>
+     */
+    private function fetchPaymentInfo(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmt = $this->pdo->prepare(
+            "SELECT id, payment_status, transaction_id FROM {$this->tables['entry']} WHERE id IN ({$placeholders})"
+        );
+        $stmt->execute($ids);
+
+        $info = [];
+        foreach ($stmt->fetchAll() as $row) {
+            $info[(int) $row['id']] = [
+                'payment_status'  => (string) ($row['payment_status'] ?? ''),
+                'transaction_id'  => (string) ($row['transaction_id'] ?? ''),
+            ];
+        }
+
+        return $info;
     }
 
     /**
      * @param int[] $ids ordered entry IDs (e.g. from matchingEntryIds)
      * @return array{total:int, entries:array}
      */
-    public function search(int $formId, array $filters, int $limit, int $offset): array
+    public function search(int $formId, array $filters, int $limit, int $offset, ?array $paymentConfig = null, array $hiddenIds = []): array
     {
-        $ids = $this->matchingEntryIds($formId, $filters);
+        $ids = $this->matchingEntryIds($formId, $filters, $paymentConfig, $hiddenIds);
         $pageIds = array_slice($ids, $offset, $limit);
 
         return [
@@ -57,7 +166,8 @@ final class EntryRepository
 
         $placeholders = implode(',', array_fill(0, count($ids), '?'));
         $stmt = $this->pdo->prepare(
-            "SELECT id, date_created, status FROM {$this->tables['entry']} WHERE id IN ({$placeholders})"
+            "SELECT id, date_created, status, payment_status, transaction_id
+             FROM {$this->tables['entry']} WHERE id IN ({$placeholders})"
         );
         $stmt->execute($ids);
 

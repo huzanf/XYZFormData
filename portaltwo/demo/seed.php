@@ -24,7 +24,7 @@ $pdo = new PDO('sqlite:' . $dbFile, null, null, [
 
 $pdo->exec('CREATE TABLE gf_form (id INTEGER PRIMARY KEY, title TEXT, date_created TEXT)');
 $pdo->exec('CREATE TABLE gf_form_meta (form_id INTEGER, display_meta TEXT)');
-$pdo->exec('CREATE TABLE gf_entry (id INTEGER PRIMARY KEY, form_id INTEGER, status TEXT, date_created TEXT)');
+$pdo->exec('CREATE TABLE gf_entry (id INTEGER PRIMARY KEY, form_id INTEGER, status TEXT, date_created TEXT, payment_status TEXT, transaction_id TEXT)');
 $pdo->exec('CREATE TABLE gf_entry_meta (entry_id INTEGER, form_id INTEGER, meta_key TEXT, meta_value TEXT)');
 
 // ---------------------------------------------------------------------

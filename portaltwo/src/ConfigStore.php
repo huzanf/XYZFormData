@@ -80,6 +80,29 @@ final class ConfigStore
         $this->persist();
     }
 
+    /**
+     * A form's payment visibility rule, or null if it doesn't have one
+     * (payment filtering is opt-in per form — most forms have no payment
+     * field at all and shouldn't be touched).
+     *
+     * @return array{enabled:bool, mode_field:int, offline_value:string, success_statuses:string[]}|null
+     */
+    public function paymentConfig(int $formId): ?array
+    {
+        return $this->data['forms'][(string) $formId]['payment'] ?? null;
+    }
+
+    public function savePaymentConfig(int $formId, ?array $config): void
+    {
+        $key = (string) $formId;
+        if ($config === null) {
+            unset($this->data['forms'][$key]['payment']);
+        } else {
+            $this->data['forms'][$key]['payment'] = $config;
+        }
+        $this->persist();
+    }
+
     public function deleteView(int $formId, string $slug): void
     {
         $key = (string) $formId;

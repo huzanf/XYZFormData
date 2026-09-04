@@ -34,6 +34,14 @@ $entryRepo = new EntryRepository($pdo, $tables);
 
 $allFields = $formRepo->getFields($formId);
 
+// The demo deliberately has no portal_db (see demo/bootstrap.php), so the
+// portal-only payment/hidden-entry overrides just aren't available here —
+// entries_table.php still expects these variables to exist, defaulted to
+// "nothing configured, nothing hidden".
+$paymentConfig = null;
+$hiddenIds = [];
+$hiddenMode = false;
+
 $qvSlug = isset($_GET['qv']) ? (string) $_GET['qv'] : null;
 $activeQuickView = null;
 foreach ($quickViews as $qv) {
@@ -79,6 +87,7 @@ if ($groupField !== null && !filterHasValue($groupField, $rawFilterInput)) {
     $entries = $result['entries'];
     $entryIds = array_column($entries, 'id');
     $values = $entryRepo->getValuesForEntries($entryIds);
+    $paidMap = [];
 
     $filterableFields = [];
     foreach ($allFields as $field) {

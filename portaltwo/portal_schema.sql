@@ -44,6 +44,23 @@ CREATE TABLE IF NOT EXISTS audit_log (
     KEY idx_audit_log_created (created_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- Portal-only, per-entry overrides (hidden/marked-paid) — never written
+-- back to the WordPress database, so nothing here touches the real
+-- Gravity Forms data. form_id/entry_id refer to Gravity Forms IDs; there's
+-- no FK to the WordPress DB since it's a separate database connection.
+CREATE TABLE IF NOT EXISTS entry_overrides (
+    form_id INT UNSIGNED NOT NULL,
+    entry_id INT UNSIGNED NOT NULL,
+    hidden TINYINT(1) NOT NULL DEFAULT 0,
+    hidden_by INT UNSIGNED NULL,
+    hidden_at DATETIME NULL,
+    marked_paid TINYINT(1) NOT NULL DEFAULT 0,
+    marked_paid_by INT UNSIGNED NULL,
+    marked_paid_at DATETIME NULL,
+    PRIMARY KEY (form_id, entry_id),
+    KEY idx_entry_overrides_hidden (form_id, hidden)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
 -- After running this, add your first admin user directly (the Manage
 -- Users screen needs an existing admin to sign in and use it):
 --
