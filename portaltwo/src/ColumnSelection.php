@@ -18,7 +18,10 @@ final class ColumnSelection
     }
 
     /**
-     * @param int[]|null $ids null/empty means "all fields"
+     * @param int[]|null $ids null/empty means "all fields"; otherwise the
+     *                        returned fields follow $ids's order (not
+     *                        $allFields's), so a saved view can arrange
+     *                        columns in any order, not just the form's own.
      */
     public static function filterByIds(array $allFields, ?array $ids): array
     {
@@ -26,10 +29,17 @@ final class ColumnSelection
             return $allFields;
         }
 
-        $filtered = array_values(array_filter(
-            $allFields,
-            fn (array $field) => in_array($field['id'], $ids, true)
-        ));
+        $byId = [];
+        foreach ($allFields as $field) {
+            $byId[$field['id']] = $field;
+        }
+
+        $filtered = [];
+        foreach ($ids as $id) {
+            if (isset($byId[$id])) {
+                $filtered[] = $byId[$id];
+            }
+        }
 
         // If the saved/requested selection matched nothing (e.g. the form
         // changed since a view was saved), fall back to all columns

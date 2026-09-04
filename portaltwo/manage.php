@@ -13,21 +13,23 @@ $config = require __DIR__ . '/config/config.php';
 
 /**
  * Pulls an ordered list of field IDs out of a set of numbered "slot"
- * selects (e.g. gc_col1..gc_col6) — used wherever column/field order
- * matters (group_columns, presence_columns), which plain checkboxes can't
- * express since they come back in form order, not selection order.
+ * selects (e.g. view_col1, view_col2, ...) — used wherever column/field
+ * order matters, which plain checkboxes can't express since they come
+ * back in form order, not selection order. Any number of slots is
+ * supported (the template decides how many to render); this just collects
+ * whichever ones were actually submitted, in slot-number order.
  */
-function collectSlots(array $post, string $prefix, int $count): array
+function collectSlots(array $post, string $prefix): array
 {
-    $ids = [];
-    for ($i = 1; $i <= $count; $i++) {
-        $value = $post[$prefix . $i] ?? '';
-        if ($value !== '') {
-            $ids[] = (int) $value;
+    $indexed = [];
+    foreach ($post as $key => $value) {
+        if (preg_match('/^' . preg_quote($prefix, '/') . '(\d+)$/', (string) $key, $m) && $value !== '') {
+            $indexed[(int) $m[1]] = (int) $value;
         }
     }
+    ksort($indexed);
 
-    return $ids;
+    return array_values($indexed);
 }
 
 try {
@@ -66,16 +68,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         case 'save_view':
             $label = trim((string) ($_POST['label'] ?? ''));
             $groupBy = ($_POST['group_by'] ?? '') !== '' ? (int) $_POST['group_by'] : null;
-            $columns = (isset($_POST['columns']) && is_array($_POST['columns']))
-                ? array_map('intval', $_POST['columns'])
-                : null;
+            $columns = collectSlots($_POST, 'view_col');
 
             if ($formId > 0 && $label !== '') {
                 $store->saveView($formId, [
                     'slug'     => (string) ($_POST['slug'] ?? ''),
                     'label'    => $label,
                     'group_by' => $groupBy,
-                    'columns'  => $columns,
+                    'columns'  => empty($columns) ? null : $columns,
                 ]);
             }
             header('Location: manage.php?form=' . $formId);
@@ -108,17 +108,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     case 'group_columns':
                         $sheet['group_by'] = (int) ($_POST['group_by'] ?? 0);
-                        $sheet['columns'] = collectSlots($_POST, 'gc_col', 6);
+                        $sheet['columns'] = collectSlots($_POST, 'gc_col');
                         break;
 
                     case 'value_sections':
                         $sheet['category_by'] = (int) ($_POST['category_by'] ?? 0);
-                        $sheet['columns'] = collectSlots($_POST, 'vs_col', 6);
+                        $sheet['columns'] = collectSlots($_POST, 'vs_col');
                         break;
 
                     case 'presence_columns':
-                        $sheet['fields'] = collectSlots($_POST, 'pc_field', 6);
-                        $sheet['columns'] = collectSlots($_POST, 'pc_col', 6);
+                        $sheet['fields'] = collectSlots($_POST, 'pc_field');
+                        $sheet['columns'] = collectSlots($_POST, 'pc_col');
                         break;
                 }
 

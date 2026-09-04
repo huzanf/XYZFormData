@@ -82,14 +82,19 @@ $editingColumns = $editing['columns'] ?? [];
     </label>
 
     <fieldset class="checkbox-group">
-        <legend>Columns to show (none checked = show all)</legend>
-        <?php foreach ($allFields as $f): ?>
-        <label class="checkbox-option">
-            <input type="checkbox" name="columns[]" value="<?= (int) $f['id'] ?>"
-                <?= in_array($f['id'], $editingColumns, true) ? 'checked' : '' ?>>
-            <?= htmlspecialchars($f['label']) ?>
+        <legend>Columns to show, in order (leave every slot as "—" to show all, in the form's own order)</legend>
+        <?php for ($i = 1; $i <= max(count($allFields), 1); $i++): ?>
+        <label>Column <?= $i ?>
+            <select name="view_col<?= $i ?>">
+                <option value="">—</option>
+                <?php foreach ($allFields as $f): ?>
+                <option value="<?= (int) $f['id'] ?>" <?= ($editingColumns[$i - 1] ?? null) === $f['id'] ? 'selected' : '' ?>>
+                    <?= htmlspecialchars($f['label']) ?>
+                </option>
+                <?php endforeach; ?>
+            </select>
         </label>
-        <?php endforeach; ?>
+        <?php endfor; ?>
         <?php if (empty($allFields)): ?>
         <span class="empty-note">Couldn't load this form's fields — check the database connection.</span>
         <?php endif; ?>
