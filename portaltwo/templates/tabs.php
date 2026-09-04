@@ -1,7 +1,8 @@
 <?php
 $onSheetsPage = basename((string) ($_SERVER['SCRIPT_NAME'] ?? '')) === 'sheets.php';
-$sheetsConfig = require dirname(__DIR__) . '/config/sheets.php';
-$hasSheets = !empty($sheetsConfig[$formId]['sheets'] ?? null);
+require_once dirname(__DIR__) . '/src/SheetConfigStore.php';
+$sheetStoreForTabs = new SheetConfigStore(dirname(__DIR__) . '/data/sheets.json', dirname(__DIR__) . '/config/sheets.php');
+$hasSheets = !empty($sheetStoreForTabs->sheetsForForm($formId));
 ?>
 <nav class="view-tabs">
     <a href="view.php?form=<?= (int) $formId ?>" class="<?= (!$onSheetsPage && $qvSlug === null) ? 'active' : '' ?>">Full Data</a>

@@ -7,8 +7,28 @@ require_once __DIR__ . '/src/Database.php';
 require_once __DIR__ . '/src/SchemaDetector.php';
 require_once __DIR__ . '/src/FormRepository.php';
 require_once __DIR__ . '/src/ConfigStore.php';
+require_once __DIR__ . '/src/SheetConfigStore.php';
 
 $config = require __DIR__ . '/config/config.php';
+
+/**
+ * Pulls an ordered list of field IDs out of a set of numbered "slot"
+ * selects (e.g. gc_col1..gc_col6) — used wherever column/field order
+ * matters (group_columns, presence_columns), which plain checkboxes can't
+ * express since they come back in form order, not selection order.
+ */
+function collectSlots(array $post, string $prefix, int $count): array
+{
+    $ids = [];
+    for ($i = 1; $i <= $count; $i++) {
+        $value = $post[$prefix . $i] ?? '';
+        if ($value !== '') {
+            $ids[] = (int) $value;
+        }
+    }
+
+    return $ids;
+}
 
 try {
     $portalPdo = Database::connect($config['portal_db'], 'portal');
@@ -23,6 +43,7 @@ try {
 Auth::requireAdmin($portalPdo);
 
 $store = new ConfigStore(__DIR__ . '/data/views.json', __DIR__ . '/config/forms.php');
+$sheetStore = new SheetConfigStore(__DIR__ . '/data/sheets.json', __DIR__ . '/config/sheets.php');
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = (string) ($_POST['action'] ?? '');
@@ -64,6 +85,52 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $store->deleteView($formId, (string) ($_POST['slug'] ?? ''));
             header('Location: manage.php?form=' . $formId);
             exit;
+
+        case 'save_sheet':
+            $type = (string) ($_POST['sheet_type'] ?? '');
+            $label = trim((string) ($_POST['sheet_label'] ?? ''));
+            $validTypes = ['complete', 'group_columns', 'value_sections', 'presence_columns'];
+
+            if ($formId > 0 && $label !== '' && in_array($type, $validTypes, true)) {
+                $sheet = [
+                    'slug'  => (string) ($_POST['sheet_slug'] ?? ''),
+                    'type'  => $type,
+                    'label' => $label,
+                ];
+
+                switch ($type) {
+                    case 'complete':
+                        $cols = (isset($_POST['complete_columns']) && is_array($_POST['complete_columns']))
+                            ? array_map('intval', $_POST['complete_columns'])
+                            : [];
+                        $sheet['columns'] = empty($cols) ? null : $cols;
+                        break;
+
+                    case 'group_columns':
+                        $sheet['group_by'] = (int) ($_POST['group_by'] ?? 0);
+                        $sheet['columns'] = collectSlots($_POST, 'gc_col', 6);
+                        break;
+
+                    case 'value_sections':
+                        $sheet['category_by'] = (int) ($_POST['category_by'] ?? 0);
+                        $sheet['columns'] = collectSlots($_POST, 'vs_col', 6);
+                        break;
+
+                    case 'presence_columns':
+                        $sheet['fields'] = collectSlots($_POST, 'pc_field', 6);
+                        $sheet['columns'] = collectSlots($_POST, 'pc_col', 6);
+                        break;
+                }
+
+                $sheetStore->saveSheet($formId, $sheet);
+            }
+            header('Location: manage.php?form=' . $formId . '#sheets');
+            exit;
+
+        case 'delete_sheet':
+            $sheetStore->deleteSheet($formId, (string) ($_POST['slug'] ?? ''));
+            header('Location: manage.php?form=' . $formId . '#sheets');
+            exit;
     }
 }
 
@@ -96,8 +163,10 @@ if ($formId === null) {
         }
 
         $views = $formEntry['views'] ?? [];
-        $title = 'Manage Views — ' . $formEntry['label'];
+        $sheets = $sheetStore->sheetsForForm($formId);
+        $title = 'Manage Views & Sheets — ' . $formEntry['label'];
         include __DIR__ . '/templates/manage_views.php';
+        include __DIR__ . '/templates/manage_sheets.php';
     }
 }
 

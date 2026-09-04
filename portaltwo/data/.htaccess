@@ -1,6 +1,6 @@
-# Block all direct web access to this folder. It holds views.json (the
-# admin-configured forms/views store), which should never be fetched
-# directly over the web.
+# Block all direct web access to this folder. It holds views.json and
+# sheets.json (the admin-configured forms/views/sheets stores), which
+# should never be fetched directly over the web.
 <IfModule mod_authz_core.c>
     Require all denied
 </IfModule>

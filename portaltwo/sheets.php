@@ -9,6 +9,7 @@ require_once __DIR__ . '/src/FormRepository.php';
 require_once __DIR__ . '/src/EntryRepository.php';
 require_once __DIR__ . '/src/SheetBuilder.php';
 require_once __DIR__ . '/src/ConfigStore.php';
+require_once __DIR__ . '/src/SheetConfigStore.php';
 
 $config = require __DIR__ . '/config/config.php';
 
@@ -37,14 +38,14 @@ if ($formDef === null) {
     exit;
 }
 
-$sheetsConfig = require __DIR__ . '/config/sheets.php';
-$sheetDefs = $sheetsConfig[$formId]['sheets'] ?? [];
+$sheetStore = new SheetConfigStore(__DIR__ . '/data/sheets.json', __DIR__ . '/config/sheets.php');
+$sheetDefs = $sheetStore->sheetsForForm($formId);
 
 if (empty($sheetDefs)) {
     http_response_code(404);
     $title = 'No sheets configured';
     $content = '<h1>No sheets configured for this form</h1>'
-        . '<p>Add an entry for form ' . (int) $formId . ' in config/sheets.php.</p>'
+        . '<p><a href="manage.php?form=' . (int) $formId . '#sheets">Add one in Manage Views &amp; Sheets</a>.</p>'
         . '<p><a href="view.php?form=' . (int) $formId . '">&larr; Back to ' . htmlspecialchars($formDef['label']) . '</a></p>';
     include __DIR__ . '/templates/layout.php';
     exit;
