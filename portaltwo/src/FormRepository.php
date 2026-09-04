@@ -55,6 +55,14 @@ final class FormRepository
                 }
             }
 
+            $choices = [];
+            foreach ($field['choices'] ?? [] as $choice) {
+                $value = $choice['value'] ?? ($choice['text'] ?? null);
+                if ($value !== null && $value !== '') {
+                    $choices[] = (string) $value;
+                }
+            }
+
             $type = $field['type'] ?? 'text';
 
             $fields[] = [
@@ -62,6 +70,10 @@ final class FormRepository
                 'label'       => $field['label'] ?? ('Field ' . $field['id']),
                 'type'        => $type,
                 'inputs'      => $inputs,
+                // Configured choices (select/radio/checkbox fields), used by
+                // SheetBuilder so a category with no matching entries still
+                // gets its own (empty) sheet section rather than vanishing.
+                'choices'     => $choices,
                 'filter_type' => self::classifyFilterType($type),
             ];
         }

@@ -387,3 +387,33 @@ form.inline { display: inline; }
 }
 .flash-ok { background: #ecfdf3; color: #1a7f43; border: 1px solid #b8e6c9; }
 .flash-error { background: #fef2f2; color: var(--danger); border: 1px solid #f7c5c0; }
+
+/* Sheets (derived/pivoted views) */
+
+.btn-link {
+    display: inline-block;
+    padding: 8px 14px;
+    border-radius: 6px;
+    border: 1px solid var(--accent);
+    background: #fff;
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 600;
+    margin-top: 8px;
+}
+.btn-link:hover { background: var(--bg-alt); }
+
+.sheet-section { margin-top: 32px; }
+.sheet-section h2 { margin-bottom: 4px; }
+.sheet-section h3 { font-size: 0.95rem; margin: 20px 0 0; }
+
+.sheet-columns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    margin-top: 12px;
+}
+
+.sheet-column { flex: 0 0 auto; }
+.sheet-column .table-wrap { margin-top: 0; }
